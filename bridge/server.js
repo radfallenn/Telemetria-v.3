@@ -133,6 +133,7 @@ function decodeGT7(msg){
     lastStoredLapNumber = currentLap;
   }
 
+  const safeCurrentLap = currentLap>=0&&currentLap<300?currentLap:0;
   data.decodeOk=true;
   data.status='recebendo_udp_decodificado';
   data.velocidade=Number.isFinite(speed)&&speed>=0&&speed<600?Math.round(speed):0;
@@ -142,9 +143,9 @@ function decodeGT7(msg){
   data.marchaNumero=gear;
   data.acelerador=Math.max(0,Math.min(100,Math.round(throttle)));
   data.freio=Math.max(0,Math.min(100,Math.round(brake)));
-  data.voltasCompletadas=currentLap>=0&&currentLap<300?currentLap:0;
-  data.voltasCorrigidas=data.voltasCompletadas;
-  data.voltasCorridas=lapTimes.length;
+  data.voltasCompletadas=safeCurrentLap;
+  data.voltasCorrigidas=safeCurrentLap;
+  data.voltasCorridas=Math.max(0, safeCurrentLap - 1);
   data.lapTimes=lapTimes.map(lap);
   data.melhorVolta=lap(bestLap);
   data.ultimaVolta=lap(lastLap);
