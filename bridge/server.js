@@ -10,6 +10,10 @@ const CONFIG_FILE = './config.json';
 let config = { ps5Ip: process.env.PS5_IP || '192.168.1.68' };
 try { config = { ...config, ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')) }; } catch {}
 
+let lapTimes = [];
+let lastStoredLapMs = 0;
+let lastStoredLapNumber = 0;
+
 let data = {
   connected: false,
   status: 'aguardando_pacotes',
@@ -30,8 +34,11 @@ let data = {
   melhorVolta: '--',
   ultimaVolta: '--',
   tempoTotalCorrida: '--',
+  mediaVoltas: '--',
   voltasCompletadas: 0,
   voltasCorrigidas: 0,
+  voltasCorridas: 0,
+  lapTimes: [],
   ps5Ip: config.ps5Ip,
   note: 'Telemetria v3 Bridge ativo. IP do PS5 alteravel pelo app.'
 };
@@ -44,6 +51,16 @@ function lap(ms){
   if(!ms || ms <= 0) return '--';
   const m=Math.floor(ms/60000), sec=Math.floor((ms%60000)/1000), z=Math.floor(ms%1000);
   return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')+'.'+String(z).padStart(3,'0');
+}
+function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+function computeAverage(times){
+  if(!times.length) return '--';
+  let used = times.slice();
+  if(used.length > 10){
+    used = used.slice().sort((a,b)=>a-b).slice(3, -3);
+  }
+  if(!used.length) return '--';
+  return lap(Math.round(sum(used) / used.length));
 }
 function rotl(v,c){ return ((v << c) | (v >>> (32-c))) >>> 0; }
 function qr(x,a,b,c,d){
@@ -105,6 +122,17 @@ function decodeGT7(msg){
   const fuel=readFloat(d,0x44);
   const fuelCap=readFloat(d,0x48);
 
+  if(currentLap === 0){
+    lapTimes = [];
+    lastStoredLapMs = 0;
+    lastStoredLapNumber = 0;
+  }
+  if(lastLap > 0 && currentLap > 0 && (lastLap !== lastStoredLapMs || currentLap !== lastStoredLapNumber)){
+    lapTimes.push(lastLap);
+    lastStoredLapMs = lastLap;
+    lastStoredLapNumber = currentLap;
+  }
+
   data.decodeOk=true;
   data.status='recebendo_udp_decodificado';
   data.velocidade=Number.isFinite(speed)&&speed>=0&&speed<600?Math.round(speed):0;
@@ -116,8 +144,12 @@ function decodeGT7(msg){
   data.freio=Math.max(0,Math.min(100,Math.round(brake)));
   data.voltasCompletadas=currentLap>=0&&currentLap<300?currentLap:0;
   data.voltasCorrigidas=data.voltasCompletadas;
+  data.voltasCorridas=lapTimes.length;
+  data.lapTimes=lapTimes.map(lap);
   data.melhorVolta=lap(bestLap);
   data.ultimaVolta=lap(lastLap);
+  data.tempoTotalCorrida=lapTimes.length ? lap(sum(lapTimes)) : '--';
+  data.mediaVoltas=computeAverage(lapTimes);
   data.combustivel=Number.isFinite(fuel)?Number(fuel.toFixed(2)):null;
   data.fuelCapacity=Number.isFinite(fuelCap)?Number(fuelCap.toFixed(2)):null;
   data.combustivelPorcentagem=fuelCap>0?Math.round((fuel/fuelCap)*100):null;
@@ -165,7 +197,7 @@ const server = http.createServer(async (req,res)=>{
     catch(e){ return json(res,{ok:false,error:String(e)}); }
   }
   if(req.url==='/api/reset' && req.method==='POST'){
-    data.velocidadeMaxima=0; data.melhorVolta='--'; data.ultimaVolta='--'; data.tempoTotalCorrida='--'; data.voltasCompletadas=0; data.voltasCorrigidas=0; return json(res,{ok:true});
+    data.velocidadeMaxima=0; data.melhorVolta='--'; data.ultimaVolta='--'; data.tempoTotalCorrida='--'; data.mediaVoltas='--'; data.voltasCompletadas=0; data.voltasCorrigidas=0; data.voltasCorridas=0; data.lapTimes=[]; lapTimes=[]; lastStoredLapMs=0; lastStoredLapNumber=0; return json(res,{ok:true});
   }
   return json(res,{ok:true, app:'Telemetria v3 Bridge', endpoints:['/api/fields','/api/config','/api/reset']});
 });
