@@ -186,6 +186,7 @@ function decodeGT7(msg){
   }
 
   const safeCurrentLap = currentLap>=0&&currentLap<300?currentLap:0;
+  const correctedLap = Math.max(0, safeCurrentLap - 1);
   const runningLapMs = currentLapStartedAt && currentLap > 0 ? Math.max(0, now - currentLapStartedAt) : 0;
   const totalMs = sum(lapTimes) + runningLapMs;
 
@@ -199,8 +200,8 @@ function decodeGT7(msg){
   data.acelerador=Math.max(0,Math.min(100,Math.round(throttle)));
   data.freio=Math.max(0,Math.min(100,Math.round(brake)));
   data.voltasCompletadas=safeCurrentLap;
-  data.voltasCorrigidas=safeCurrentLap;
-  data.voltasCorridas=Math.max(0, safeCurrentLap - 1);
+  data.voltasCorrigidas=correctedLap;
+  data.voltasCorridas=correctedLap;
   data.lapTimes=lapTimes.map(lap);
   data.melhorVolta=lap(bestLap);
   data.ultimaVolta=lap(lastLap);
@@ -248,7 +249,7 @@ setInterval(()=>{
 const server = http.createServer(async (req,res)=>{
   if(req.method==='OPTIONS') return json(res,{ok:true});
   if(req.url==='/api/fields' || req.url==='/api/health' || req.url==='/api/telemetry') return json(res,data);
-  if(req.url==='/api/debug-laps') return json(res,{ok:true, lapDebug:data.lapDebug, lapTimes:data.lapTimes, best:data.melhorVolta, last:data.ultimaVolta, laps:data.voltasCompletadas});
+  if(req.url==='/api/debug-laps') return json(res,{ok:true, lapDebug:data.lapDebug, lapTimes:data.lapTimes, best:data.melhorVolta, last:data.ultimaVolta, laps:data.voltasCompletadas, corrected:data.voltasCorrigidas});
   if(req.url==='/api/config' && req.method==='GET') return json(res,{ok:true, config, bridge:{port:PORT, udpPort:UDP_PORT, ps5Port:PS5_PORT}});
   if(req.url==='/api/config' && req.method==='POST'){
     try{ const body=JSON.parse(await readBody(req)||'{}'); if(body.ps5Ip){ config.ps5Ip=String(body.ps5Ip).trim(); data.ps5Ip=config.ps5Ip; saveConfig(); } return json(res,{ok:true, config}); }
