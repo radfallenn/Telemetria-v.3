@@ -13,6 +13,8 @@ try { config = { ...config, ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')) 
 let lapTimes = [];
 let lastStoredLapMs = 0;
 let lastStoredLapNumber = 0;
+let currentLapNumber = 0;
+let currentLapStartedAt = 0;
 
 let data = {
   connected: false,
@@ -33,6 +35,7 @@ let data = {
   fuelCapacity: null,
   melhorVolta: '--',
   ultimaVolta: '--',
+  voltaAtualTempo: '--',
   tempoTotalCorrida: '--',
   mediaVoltas: '--',
   voltasCompletadas: 0,
@@ -121,19 +124,31 @@ function decodeGT7(msg){
   const lastLap=readInt32(d,0x7C);
   const fuel=readFloat(d,0x44);
   const fuelCap=readFloat(d,0x48);
+  const now = Date.now();
 
   if(currentLap === 0){
     lapTimes = [];
     lastStoredLapMs = 0;
     lastStoredLapNumber = 0;
+    currentLapNumber = 0;
+    currentLapStartedAt = 0;
   }
-  if(lastLap > 0 && currentLap > 0 && (lastLap !== lastStoredLapMs || currentLap !== lastStoredLapNumber)){
+
+  if(currentLap > 0 && currentLap !== currentLapNumber){
+    currentLapNumber = currentLap;
+    currentLapStartedAt = now;
+  }
+
+  if(lastLap > 0 && currentLap > 1 && (lastLap !== lastStoredLapMs || currentLap !== lastStoredLapNumber)){
     lapTimes.push(lastLap);
     lastStoredLapMs = lastLap;
     lastStoredLapNumber = currentLap;
   }
 
   const safeCurrentLap = currentLap>=0&&currentLap<300?currentLap:0;
+  const runningLapMs = currentLapStartedAt && currentLap > 0 ? Math.max(0, now - currentLapStartedAt) : 0;
+  const totalMs = sum(lapTimes) + runningLapMs;
+
   data.decodeOk=true;
   data.status='recebendo_udp_decodificado';
   data.velocidade=Number.isFinite(speed)&&speed>=0&&speed<600?Math.round(speed):0;
@@ -149,7 +164,8 @@ function decodeGT7(msg){
   data.lapTimes=lapTimes.map(lap);
   data.melhorVolta=lap(bestLap);
   data.ultimaVolta=lap(lastLap);
-  data.tempoTotalCorrida=lapTimes.length ? lap(sum(lapTimes)) : '--';
+  data.voltaAtualTempo=lap(runningLapMs);
+  data.tempoTotalCorrida=totalMs > 0 ? lap(totalMs) : '--';
   data.mediaVoltas=computeAverage(lapTimes);
   data.combustivel=Number.isFinite(fuel)?Number(fuel.toFixed(2)):null;
   data.fuelCapacity=Number.isFinite(fuelCap)?Number(fuelCap.toFixed(2)):null;
@@ -198,7 +214,7 @@ const server = http.createServer(async (req,res)=>{
     catch(e){ return json(res,{ok:false,error:String(e)}); }
   }
   if(req.url==='/api/reset' && req.method==='POST'){
-    data.velocidadeMaxima=0; data.melhorVolta='--'; data.ultimaVolta='--'; data.tempoTotalCorrida='--'; data.mediaVoltas='--'; data.voltasCompletadas=0; data.voltasCorrigidas=0; data.voltasCorridas=0; data.lapTimes=[]; lapTimes=[]; lastStoredLapMs=0; lastStoredLapNumber=0; return json(res,{ok:true});
+    data.velocidadeMaxima=0; data.melhorVolta='--'; data.ultimaVolta='--'; data.voltaAtualTempo='--'; data.tempoTotalCorrida='--'; data.mediaVoltas='--'; data.voltasCompletadas=0; data.voltasCorrigidas=0; data.voltasCorridas=0; data.lapTimes=[]; lapTimes=[]; lastStoredLapMs=0; lastStoredLapNumber=0; currentLapNumber=0; currentLapStartedAt=0; return json(res,{ok:true});
   }
   return json(res,{ok:true, app:'Telemetria v3 Bridge', endpoints:['/api/fields','/api/config','/api/reset']});
 });
