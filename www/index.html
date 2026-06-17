@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Telemetria v3</title>
+<style>
+:root{--bg:#020712;--card:#071426;--line:#15365d;--txt:#eef7ff;--mut:#91a7bd;--cyan:#18e8ff;--green:#22f5a2;--red:#ff335f;--yellow:#ffe15c}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#10244a,#020712 50%,#000);color:var(--txt);font-family:Arial,Roboto,sans-serif}.app{max-width:440px;margin:0 auto;min-height:100vh;padding:12px 12px 96px}.top{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.title{background:linear-gradient(145deg,#0b1b32,#040a14);border:1px solid var(--line);border-radius:14px;padding:12px}.title b{font-size:17px}.status{border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:11px;font-weight:900;color:var(--yellow);background:#050c18}.status.ok{color:var(--green)}.hero{margin-top:14px;height:220px;border-radius:999px;border:1px solid #245688;background:radial-gradient(circle,#07101f 0 55%,#020712 56%);display:grid;place-items:center;box-shadow:0 0 38px #000 inset}.speed{font-size:70px;font-weight:900;line-height:.9}.unit{text-align:center;color:var(--mut);font-weight:900}.gear{text-align:center;color:var(--cyan);font-size:26px;font-weight:900;margin-top:8px}.side{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.pill,.card,.panel{background:linear-gradient(145deg,#0b1b32,#040a14);border:1px solid var(--line);border-radius:14px;padding:12px}.lab{color:var(--mut);font-size:10px;font-weight:900;letter-spacing:.08em}.val{font-size:24px;font-weight:900;margin-top:6px}.bar{height:8px;background:#122137;border-radius:99px;overflow:hidden;margin-top:10px}.fill{height:100%;width:0;background:var(--green)}.fill.red{background:var(--red)}.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.wide{grid-column:1/-1}.panel{margin-top:10px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}input{width:100%;height:42px;border-radius:12px;border:1px solid #21466f;background:#020712;color:white;padding:0 12px;font-weight:800}button{height:42px;border:0;border-radius:12px;background:#12355e;color:white;font-weight:900}button.primary{background:linear-gradient(90deg,#12d8ff,#226dff)}button.green{background:linear-gradient(90deg,#0fbf70,#22f5a2);color:#00140c}button.red{background:linear-gradient(90deg,#ff335f,#ff7b26)}.nav{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);max-width:440px;width:calc(100% - 24px);height:70px;border-radius:16px;background:#050c18;border:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden}.nav button{border-radius:0;background:transparent}.nav button.on{color:var(--green)}.page{display:none}.page.on{display:block}.raw{font-size:11px;white-space:pre-wrap;word-break:break-word;color:#cfe6ff;max-height:70vh;overflow:auto}.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#071426;border:1px solid var(--green);border-radius:12px;padding:10px 14px;opacity:0;transition:.2s}.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="toast" id="toast">OK</div>
+<main class="app">
+<section id="dash" class="page on">
+ <div class="top"><div class="title"><b>TELEMETRIA v3</b><div class="lab">GT7 BRIDGE</div></div><div class="status" id="status">OFFLINE</div></div>
+ <div class="hero"><div><div class="speed" id="speed">0</div><div class="unit">KM/H</div><div class="gear" id="gear">N</div></div></div>
+ <div class="side"><div class="pill"><div class="lab">RPM</div><div class="val" id="rpm">--</div></div><div class="pill"><div class="lab">MAX SPEED</div><div class="val" id="maxSpeed">0</div></div></div>
+ <div class="side"><div class="pill"><div class="lab">ACELERADOR</div><div class="val" id="throttle">0%</div><div class="bar"><div class="fill" id="throttleBar"></div></div></div><div class="pill"><div class="lab">FREIO</div><div class="val" id="brake">0%</div><div class="bar"><div class="fill red" id="brakeBar"></div></div></div></div>
+ <div class="cards"><div class="card"><div class="lab">MELHOR VOLTA</div><div class="val" id="best">--</div></div><div class="card"><div class="lab">ÚLTIMA VOLTA</div><div class="val" id="last">--</div></div><div class="card"><div class="lab">TEMPO TOTAL</div><div class="val" id="total">--</div></div><div class="card"><div class="lab">VOLTAS</div><div class="val" id="laps">0</div></div></div>
+</section>
+<section id="config" class="page">
+ <div class="title"><b>CONFIGURAÇÕES</b><div class="lab">ALTERAR IP SEM CONSOLE</div></div>
+ <div class="panel"><div class="lab">IP DO RASPBERRY</div><input id="raspIp" placeholder="192.168.1.70"></div>
+ <div class="panel"><div class="lab">IP DO PS5</div><input id="ps5Ip" placeholder="192.168.1.68"></div>
+ <div class="row"><button class="primary" id="saveBtn">SALVAR</button><button class="green" id="testBtn">TESTAR</button></div>
+ <div class="row"><button class="primary" id="applyPs5Btn">APLICAR PS5 NO BRIDGE</button><button class="red" id="resetBtn">ZERAR DADOS</button></div>
+ <div class="panel"><div class="lab">STATUS</div><pre class="raw" id="cfgOut">--</pre></div>
+</section>
+<section id="raw" class="page">
+ <div class="title"><b>RAW TELEMETRIA</b><div class="lab">DADOS DO BRIDGE</div></div>
+ <div class="panel"><pre class="raw" id="rawOut">--</pre></div>
+</section>
+</main>
+<nav class="nav"><button class="on" data-page="dash">DASH</button><button data-page="config">CONFIG</button><button data-page="raw">RAW</button></nav>
+<script>
+const $=id=>document.getElementById(id);let max=0,timer=null;
+function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1800)}
+function base(){return 'http://'+($('raspIp').value||'192.168.1.70').trim()+':8787'}
+function save(){localStorage.setItem('raspIp',$('raspIp').value.trim());localStorage.setItem('ps5Ip',$('ps5Ip').value.trim());toast('Salvo')}
+function load(){ $('raspIp').value=localStorage.getItem('raspIp')||'192.168.1.70'; $('ps5Ip').value=localStorage.getItem('ps5Ip')||'192.168.1.68'}
+function pct(v){let n=Number(v||0); if(n>0&&n<=1)n*=100; return Math.max(0,Math.min(100,Math.round(n)))}
+function set(id,v){$(id).textContent=(v===undefined||v===null||v==='')?'--':String(v)}
+function render(d){$('status').textContent=d.connected?'CONECTADO':'OFFLINE';$('status').className='status '+(d.connected?'ok':'');let vel=Math.round(Number(d.velocidade||0));max=Math.max(max,vel,Number(d.velocidadeMaxima||0));set('speed',vel);set('maxSpeed',Math.round(max));set('rpm',Math.round(Number(d.rpm||0))||'--');set('gear',d.marcha||'N');let th=pct(d.acelerador);let br=pct(d.freio);set('throttle',th+'%');set('brake',br+'%');$('throttleBar').style.width=th+'%';$('brakeBar').style.width=br+'%';set('best',d.melhorVolta||'--');set('last',d.ultimaVolta||'--');set('total',d.tempoTotalCorrida||'--');set('laps',d.voltasCorrigidas??d.voltasCompletadas??0);$('rawOut').textContent=JSON.stringify(d,null,2)}
+async function poll(){try{let r=await fetch(base()+'/api/fields',{cache:'no-store'});let d=await r.json();render(d)}catch(e){$('status').textContent='OFFLINE';$('status').className='status';}}
+async function test(){try{let r=await fetch(base()+'/api/config');let d=await r.json();$('cfgOut').textContent=JSON.stringify(d,null,2);toast('Bridge respondeu')}catch(e){$('cfgOut').textContent=String(e);toast('Falha')}}
+async function applyPs5(){save();try{let r=await fetch(base()+'/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ps5Ip:$('ps5Ip').value.trim()})});$('cfgOut').textContent=JSON.stringify(await r.json(),null,2);toast('IP do PS5 aplicado')}catch(e){$('cfgOut').textContent=String(e);toast('Falha')}}
+async function reset(){try{await fetch(base()+'/api/reset',{method:'POST'});max=0;toast('Dados zerados')}catch(e){toast('Falha')}}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));$(b.dataset.page).classList.add('on')});
+$('saveBtn').onclick=save;$('testBtn').onclick=test;$('applyPs5Btn').onclick=applyPs5;$('resetBtn').onclick=reset;load();timer=setInterval(poll,700);poll();
+</script>
+</body>
+</html>
