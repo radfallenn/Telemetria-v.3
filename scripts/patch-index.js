@@ -23,12 +23,27 @@ replaceOrFail(
   'media filtrada por quantidade de voltas'
 );
 
-// Tempo Total deve ser apenas soma de voltas finalizadas/validas.
-// Se nao existe volta registrada, fica zerado/-- e nao usa tempo corrente do Bridge.
+// Tempo total: soma voltas registradas quando existem; se o Bridge ja entregar
+// tempo total fechado, usa como fallback. Nao usa cronometro corrente.
 replaceOrFail(
   /set\('totalTimeCard',lapRecords\.length\?fmtMs\(totalMs\(\)\):keep\('total',n\.total\)\);/,
-  "set('totalTimeCard',lapRecords.length?fmtMs(totalMs()):'--');",
-  'tempo total somente por voltas concluidas'
+  "set('totalTimeCard',lapRecords.length?fmtMs(totalMs()):(good(n.total)?keep('total',n.total):'--'));",
+  'tempo total por voltas concluidas com fallback bridge'
+);
+
+// Voltas: se o app ainda nao conseguiu montar lapRecords, usa a contagem do Bridge.
+// Como no GT7 a contagem registrada ja inicia em 1, corrigida = registrada - 1.
+replaceOrFail(
+  /set\('correctedLaps',Math\.max\(0,lapRecords\.length-1\)\);set\('rLaps',Math\.max\(0,lapRecords\.length-1\)\);/,
+  "const visibleLaps=lapRecords.length?Math.max(0,lapRecords.length-1):Math.max(0,(n.bridgeLaps||n.laps||0)-1);set('correctedLaps',visibleLaps);set('rLaps',visibleLaps);",
+  'voltas corrigidas com fallback bridge'
+);
+
+// Se o Bridge enviar array de voltas prontas, importa automaticamente para lapRecords.
+replaceOrFail(
+  /function addLapIfNeeded\(d,n\)\{if\(!sessionActive\|\|n\.speed<2\)return;const ms=parseMs\(n\.last\);const token=n\.bridgeLaps\+':'\+ms;if\(validLap\(ms\)&&token!==lastLapToken\)\{lastLapToken=token;if\(!lapRecords\.some\(x=>x\.ms===ms&&x\.token===token\)\)\{lapRecords\.push\(\{ms,token,at:Date\.now\(\),speed:n\.speed,max:maxSpeed\}\);if\(lapRecords\.length>100\)lapRecords=lapRecords\.slice\(-100\);localStorage\.setItem\(K\.laps,JSON\.stringify\(lapRecords\)\);updateRanking\(ms\)\}\}\}/,
+  "function addLapIfNeeded(d,n){let arr=Array.isArray(d.lapTimes)?d.lapTimes:(Array.isArray(d.voltas)?d.voltas:[]);arr.forEach((x,i)=>{let raw=typeof x==='object'?(x.time??x.tempo??x.ms??x.lap):x;let ms=parseMs(raw);let token='arr:'+i+':'+ms;if(validLap(ms)&&!lapRecords.some(v=>v.token===token||Math.abs(v.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});updateRanking(ms)}});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);if(arr.length)localStorage.setItem(K.laps,JSON.stringify(lapRecords));if(!sessionActive||n.speed<2)return;const ms=parseMs(n.last);const token=n.bridgeLaps+':'+ms;if(validLap(ms)&&token!==lastLapToken){lastLapToken=token;if(!lapRecords.some(x=>x.ms===ms&&x.token===token)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));updateRanking(ms)}}}",
+  'importar voltas do bridge quando disponiveis'
 );
 
 // Garante que o zerar limpe tambem totais e medias imediatamente.
