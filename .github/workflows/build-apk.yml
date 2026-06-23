@@ -23,6 +23,8 @@ jobs:
           node-version: '22'
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Patch app
+        run: node scripts/patch-index.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
