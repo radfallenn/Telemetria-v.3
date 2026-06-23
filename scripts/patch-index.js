@@ -41,6 +41,12 @@ patch(
 );
 
 patch(
+  "function addLapIfNeeded(d,n){if(!sessionActive||n.speed<2)return;const ms=parseMs(n.last);const token=n.bridgeLaps+':'+ms;if(validLap(ms)&&token!==lastLapToken){lastLapToken=token;if(!lapRecords.some(x=>x.ms===ms&&x.token===token)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));updateRanking(ms)}}}",
+  "function addLapIfNeeded(d,n){let arr=Array.isArray(d.lapTimes)?d.lapTimes:(Array.isArray(d.voltas)?d.voltas:[]);arr.forEach((x,i)=>{let raw=typeof x==='object'?(x.time??x.tempo??x.ms??x.lap):x;let ms=parseMs(raw);let token='arr:'+i+':'+ms;if(validLap(ms)&&!lapRecords.some(v=>v.token===token||Math.abs(v.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});updateRanking(ms)}});if(arr.length){if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));}const ms=parseMs(n.last);const token='last:'+(n.bridgeLaps||lapRecords.length)+':'+ms;if(validLap(ms)&&token!==lastLapToken){lastLapToken=token;if(!lapRecords.some(x=>x.token===token||Math.abs(x.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));updateRanking(ms)}}}",
+  'captura voltas validas para heatmap'
+);
+
+patch(
   "set('correctedLaps',0);set('rLaps',0);renderLaps();renderUDM();toast('Tudo zerado, seções salvas mantidas')}",
   "set('correctedLaps',0);set('rLaps',0);set('totalTimeCard','--');set('rTotal','--');set('avgTimeCard','--');set('rAvg','--');set('lastLapCard','--');set('rLast','--');set('bestLapCard','--');set('rBest','--');renderLaps();renderUDM();toast('Tudo zerado, seções salvas mantidas')}",
   'zerar numeros'
