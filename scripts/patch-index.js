@@ -42,7 +42,7 @@ patch(
 
 patch(
   "function addLapIfNeeded(d,n){if(!sessionActive||n.speed<2)return;const ms=parseMs(n.last);const token=n.bridgeLaps+':'+ms;if(validLap(ms)&&token!==lastLapToken){lastLapToken=token;if(!lapRecords.some(x=>x.ms===ms&&x.token===token)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));updateRanking(ms)}}}",
-  "function addLapIfNeeded(d,n){let arr=Array.isArray(d.lapTimes)?d.lapTimes:(Array.isArray(d.voltas)?d.voltas:[]);arr.forEach((x,i)=>{let raw=typeof x==='object'?(x.time??x.tempo??x.ms??x.lap):x;let ms=parseMs(raw);let token='arr:'+i+':'+ms;if(validLap(ms)&&!lapRecords.some(v=>v.token===token||Math.abs(v.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});updateRanking(ms)}});if(arr.length){if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));}const ms=parseMs(n.last);const token='last:'+(n.bridgeLaps||lapRecords.length)+':'+ms;if(validLap(ms)&&token!==lastLapToken){lastLapToken=token;if(!lapRecords.some(x=>x.token===token||Math.abs(x.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));updateRanking(ms)}}}",
+  "function addLapIfNeeded(d,n){let before=lapRecords.length;let arr=Array.isArray(d.lapTimes)?d.lapTimes:(Array.isArray(d.voltas)?d.voltas:[]);arr.forEach((x,i)=>{let raw=typeof x==='object'?(x.time??x.tempo??x.ms??x.lap):x;let ms=parseMs(raw);let token='arr:'+i+':'+ms;if(validLap(ms)&&!lapRecords.some(v=>v.token===token||Math.abs(v.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});updateRanking(ms)}});if(arr.length){if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));}const ms=parseMs(n.last);const token='last:'+(n.bridgeLaps||lapRecords.length)+':'+ms;if(validLap(ms)&&token!==lastLapToken){lastLapToken=token;if(!lapRecords.some(x=>x.token===token||Math.abs(x.ms-ms)<250)){lapRecords.push({ms,token,at:Date.now(),speed:n.speed,max:maxSpeed});if(lapRecords.length>100)lapRecords=lapRecords.slice(-100);localStorage.setItem(K.laps,JSON.stringify(lapRecords));updateRanking(ms)}}if(lapRecords.length>before&&typeof coachFinalizeLap==='function')coachFinalizeLap(lapRecords[lapRecords.length-1]);}",
   'captura voltas validas para heatmap'
 );
 
@@ -50,6 +50,42 @@ patch(
   "set('correctedLaps',0);set('rLaps',0);renderLaps();renderUDM();toast('Tudo zerado, seções salvas mantidas')}",
   "set('correctedLaps',0);set('rLaps',0);set('totalTimeCard','--');set('rTotal','--');set('avgTimeCard','--');set('rAvg','--');set('lastLapCard','--');set('rLast','--');set('bestLapCard','--');set('rBest','--');renderLaps();renderUDM();toast('Tudo zerado, seções salvas mantidas')}",
   'zerar numeros'
+);
+
+patch(
+  '<div class="row"><button class="green" id="startSessionBtn">INICIAR SEÇÃO</button><button id="saveSectionBtn">SALVAR SEÇÃO</button></div>',
+  '<div class="row"><button class="green" id="startSessionBtn">INICIAR SEÇÃO</button><button id="saveSectionBtn">SALVAR SEÇÃO</button></div><button id="coachBtn" style="width:100%;margin-top:8px">COACH</button>',
+  'botao coach'
+);
+
+patch(
+  '</main>',
+  '<div id="coachModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:80;padding:18px;overflow:auto"><div class="panel" style="max-width:440px;margin:44px auto"><div class="top"><div><b>COACH</b><div class="lab">VOLTA EM 4 PARTES</div></div><button id="coachClose" class="red" style="width:72px">FECHAR</button></div><div id="coachContent" class="small" style="margin-top:12px">Aguardando volta válida.</div></div></div></main>',
+  'janela coach'
+);
+
+patch(
+  'let pollTimer=null,connected=false,lastValid={},rawData={},lapRecords=[],sessionActive=false,maxSpeed=0,lastLapToken=\'\',smoothRpm=0,targetRpm=0;',
+  'let pollTimer=null,connected=false,lastValid={},rawData={},lapRecords=[],sessionActive=false,maxSpeed=0,lastLapToken=\'\',smoothRpm=0,targetRpm=0,coachSamples=[],coachReport=[];',
+  'variaveis coach'
+);
+
+patch(
+  'function render(d){rawData=d;const n=normalize(d);targetRpm=n.rpm;',
+  'function render(d){rawData=d;const n=normalize(d);coachSample(n);targetRpm=n.rpm;',
+  'amostra coach por render'
+);
+
+patch(
+  'function renderUDM(){const u=computeUDM();set(\'grade\',u.grade);set(\'deltaBest\',u.delta);set(\'consistency\',u.cons);set(\'coach\',u.coach)}',
+  "function renderUDM(){const u=computeUDM();set('grade',u.grade);set('deltaBest',u.delta);set('consistency',u.cons);set('coach',u.coach)}function coachSample(n){coachSamples.push({speed:n.speed,throttle:n.throttle,brake:n.brake,at:Date.now()});if(coachSamples.length>900)coachSamples=coachSamples.slice(-900)}function coachRate(part,base){let sp=part.reduce((a,b)=>a+(b.speed||0),0)/(part.length||1);let br=part.reduce((a,b)=>a+(b.brake||0),0)/(part.length||1);let th=part.reduce((a,b)=>a+(b.throttle||0),0)/(part.length||1);let score=(sp/(base||1))*100-(br*.18)+(th*.05);return score>=88?'Boa':score>=72?'Média':'Ruim'}function coachFinalizeLap(lap){let samples=coachSamples.splice(0);if(!samples.length)samples=[{speed:lap.speed||0,throttle:0,brake:0}];let base=Math.max(1,...samples.map(s=>s.speed||0));let parts=[];for(let i=0;i<4;i++){let a=Math.floor(samples.length*i/4),b=Math.floor(samples.length*(i+1)/4);let chunk=samples.slice(a,b);parts.push(coachRate(chunk,base))}coachReport.unshift({lap:lapRecords.length,time:fmtMs(lap.ms),parts});coachReport=coachReport.slice(0,12);renderCoach()}function renderCoach(){if(!$('coachContent'))return;if(!coachReport.length){$('coachContent').innerHTML='Aguardando volta válida.';return}$('coachContent').innerHTML=coachReport.map(r=>'<div class=\"card\" style=\"margin-top:8px\"><div class=\"lab\">VOLTA #'+r.lap+' • '+r.time+'</div><div class=\"grid2\" style=\"margin-top:8px\">'+r.parts.map((p,i)=>'<div><div class=\"lab\">PARTE '+(i+1)+'</div><div class=\"val\" style=\"font-size:18px\">'+p+'</div></div>').join('')+'</div></div>').join('')}",
+  'funcoes coach'
+);
+
+patch(
+  "$('connectBtn').onclick=connect;$('disconnectBtn').onclick=disconnect;$('testBtn').onclick=test;$('applyPs5Btn').onclick=applyPs5;$('zeroBtn').onclick=zeroEverything;$('startSessionBtn').onclick=()=>{sessionActive=!sessionActive;localStorage.setItem(K.session,JSON.stringify({active:sessionActive,at:Date.now()}));toast(sessionActive?'Seção iniciada':'Seção pausada')};$('saveSectionBtn').onclick=saveSection;",
+  "$('connectBtn').onclick=connect;$('disconnectBtn').onclick=disconnect;$('testBtn').onclick=test;$('applyPs5Btn').onclick=applyPs5;$('zeroBtn').onclick=zeroEverything;$('startSessionBtn').onclick=()=>{sessionActive=!sessionActive;if(sessionActive){maxSpeed=0;coachSamples=[];coachReport=[];set('maxSpeed',0);set('rMax',0);renderCoach()}localStorage.setItem(K.session,JSON.stringify({active:sessionActive,at:Date.now()}));toast(sessionActive?'Seção iniciada':'Seção pausada')};$('saveSectionBtn').onclick=saveSection;$('coachBtn').onclick=()=>{$('coachModal').style.display='block';renderCoach()};$('coachClose').onclick=()=>{$('coachModal').style.display='none'};",
+  'eventos coach e max speed secao'
 );
 
 fs.writeFileSync(indexPath, html);
