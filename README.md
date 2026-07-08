@@ -1,37 +1,31 @@
-# Telemetria v3
+# GT7 Telemetria 4.0
 
-Projeto novo do GT7 Telemetria.
+Sistema de telemetria para Gran Turismo 7 com Raspberry como Bridge principal e Android como painel remoto.
 
-## Objetivo
+## Versão atual da branch telemetria-4.0
 
-- App Android/Web com tela para configurar IP do Raspberry e IP do PS5.
-- Bridge no Raspberry com API para alterar o IP do PS5 sem usar console.
-- Botões no app: salvar IPs, testar conexão, aplicar IP do PS5 no Bridge, iniciar/parar sessão, zerar dados.
+- Interface refeita no visual do arquivo anexado Stitch/Apex Telemetry System.
+- Bridge Raspberry incluído em `bridge/server.cjs`.
+- APK com tela sempre ativa.
+- Android liberado para conexão HTTP local.
+- Configuração do IP do PS5 feita pelo app e salva no Raspberry.
 
-## Raspberry
-
-Instalação rápida no Raspberry:
+## Rodar no Raspberry
 
 ```bash
-cd ~
-git clone https://github.com/radfallenn/Telemetria-v.3.git telemetria-v3
-cd telemetria-v3/bridge
-docker compose up -d
+git checkout telemetria-4.0
+cp .env.example .env
+nano .env
+npm install
+npm start
 ```
 
-API do Bridge:
+Teste:
 
-- `GET /api/fields`
-- `GET /api/config`
-- `POST /api/config` com `{ "ps5Ip": "192.168.1.68" }`
-- `POST /api/reset`
+```text
+http://IP_DO_RASPBERRY:8787/api/health
+```
 
-## App
+## Gerar APK
 
-No app, em Configurações:
-
-- IP do Raspberry
-- IP do PS5
-- Salvar
-- Testar conexão
-- Enviar IP do PS5 para Bridge
+No GitHub, abra **Actions > Build APK Telemetria 4.0 > Run workflow** usando a branch `telemetria-4.0`.
