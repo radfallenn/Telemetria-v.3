@@ -1,205 +1,32 @@
-const http = require('http');
-const dgram = require('dgram');
-const fs = require('fs');
-
-const PORT = 8787;
-const UDP_PORT = 33740;
-const PS5_PORT = 33739;
-const CONFIG_FILE = './config.json';
-const SESSIONS_FILE = './sessions.json';
-
-let config = { ps5Ip: process.env.PS5_IP || '192.168.1.68' };
-try { config = { ...config, ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')) }; } catch {}
-
-let lapTimes = [];
-let lastStoredLapMs = 0;
-let lastStoredLapNumber = 0;
-let currentLapNumber = 0;
-let currentLapStartedAt = 0;
-
-let data = {
-  connected: false,
-  status: 'aguardando_pacotes',
-  decodeOk: false,
-  updatedAt: null,
-  packetSize: 0,
-  packetVersion: '?',
-  velocidade: 0,
-  velocidadeMaxima: 0,
-  rpm: 0,
-  marcha: 'N',
-  marchaNumero: 0,
-  acelerador: 0,
-  freio: 0,
-  combustivel: null,
-  combustivelPorcentagem: null,
-  fuelCapacity: null,
-  melhorVolta: '--',
-  ultimaVolta: '--',
-  voltaAtualTempo: '--',
-  tempoTotalCorrida: '--',
-  mediaVoltas: '--',
-  voltasCompletadas: 0,
-  voltasCorrigidas: 0,
-  voltasCorridas: 0,
-  lapTimes: [],
-  lapDebug: {},
-  ps5Ip: config.ps5Ip,
-  note: 'Telemetria v3 Bridge ativo. IP do PS5 alteravel pelo app.'
-};
-
-function readFloat(b,o){ try{return b.readFloatLE(o)}catch{return 0} }
-function readInt32(b,o){ try{return b.readInt32LE(o)}catch{return 0} }
-function readUInt32(b,o){ try{return b.readUInt32LE(o)}catch{return 0} }
-function readInt16(b,o){ try{return b.readInt16LE(o)}catch{return 0} }
-function readUInt8(b,o){ try{return b.readUInt8(o)}catch{return 0} }
-function lap(ms){
-  if(!ms || ms <= 0) return '--';
-  const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000), z=Math.floor(ms%1000);
-  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(z).padStart(3,'0');
-}
-function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
-function computeAverage(times){
-  if(!times.length) return '--';
-  let used = times.slice();
-  if(used.length >= 10) used = used.sort((a,b)=>a-b).slice(3,-3);
-  else if(used.length >= 5) used = used.sort((a,b)=>a-b).slice(2,-2);
-  return used.length ? lap(Math.round(sum(used)/used.length)) : '--';
-}
-function saveConfig(){ fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2)); }
-function packetVersion(n){ return n===368?'C':n===296?'A':n===316?'B':'?'; }
-function readBody(req){ return new Promise(resolve=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>resolve(b));}); }
-function json(res,obj){ res.writeHead(200, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}); res.end(JSON.stringify(obj)); }
-function loadSessions(){ try{ const v=JSON.parse(fs.readFileSync(SESSIONS_FILE,'utf8')); return Array.isArray(v)?v:[]; }catch{return []} }
-function saveSessions(list){ fs.writeFileSync(SESSIONS_FILE, JSON.stringify(list.slice(0,300), null, 2)); }
-
-function scanLapDebug(buf){
-  return {
-    packetSize: buf.length,
-    knownOffsets: {
-      currentLap_0x74_i16: readInt16(buf,0x74),
-      bestLap_0x78_i32: readInt32(buf,0x78),
-      lastLap_0x7c_i32: readInt32(buf,0x7c),
-      speed_0x4c: Number(readFloat(buf,0x4c).toFixed(3)),
-      rpm_0x3c: Number(readFloat(buf,0x3c).toFixed(3))
-    }
-  };
-}
-function rotl(v,c){ return ((v << c) | (v >>> (32-c))) >>> 0; }
-function qr(x,a,b,c,d){ x[b]^=rotl((x[a]+x[d])>>>0,7); x[c]^=rotl((x[b]+x[a])>>>0,9); x[d]^=rotl((x[c]+x[b])>>>0,13); x[a]^=rotl((x[d]+x[c])>>>0,18); }
-function salsaBlock(key,iv,counter){
-  const sigma=Buffer.from('expand 32-byte k');
-  const st=new Uint32Array(16);
-  st[0]=sigma.readUInt32LE(0); st[5]=sigma.readUInt32LE(4); st[10]=sigma.readUInt32LE(8); st[15]=sigma.readUInt32LE(12);
-  for(let i=0;i<4;i++) st[1+i]=key.readUInt32LE(i*4);
-  for(let i=0;i<4;i++) st[11+i]=key.readUInt32LE(16+i*4);
-  st[6]=iv.readUInt32LE(0); st[7]=iv.readUInt32LE(4); st[8]=counter>>>0; st[9]=0;
-  const x=new Uint32Array(st);
-  for(let i=0;i<10;i++){ qr(x,0,4,8,12); qr(x,5,9,13,1); qr(x,10,14,2,6); qr(x,15,3,7,11); qr(x,0,1,2,3); qr(x,5,6,7,4); qr(x,10,11,8,9); qr(x,15,12,13,14); }
-  const out=Buffer.alloc(64); for(let i=0;i<16;i++) out.writeUInt32LE((x[i]+st[i])>>>0,i*4); return out;
-}
-function salsaXor(buf,key,iv){ const out=Buffer.alloc(buf.length); let counter=0; for(let off=0;off<buf.length;off+=64){ const block=salsaBlock(key,iv,counter++); for(let i=0;i<Math.min(64,buf.length-off);i++) out[off+i]=buf[off+i]^block[i]; } return out; }
-function decryptGT7(msg){
-  try{
-    const key=Buffer.from('Simulator Interface Packet GT7 ver 0.0').subarray(0,32);
-    const iv1=msg.readUInt32LE(0x40);
-    const iv2=(iv1 ^ 0xDEADBEAF)>>>0;
-    const iv=Buffer.alloc(8); iv.writeUInt32LE(iv2,0); iv.writeUInt32LE(iv1,4);
-    const out=salsaXor(msg,key,iv);
-    if(out.readUInt32LE(0)!==0x47375330) return null;
-    return out;
-  }catch(e){ console.log('Erro decoder:', e.message); return null; }
-}
-function decodeGT7(msg){
-  const d=decryptGT7(msg); if(!d) return false;
-  const speed=readFloat(d,0x4C)*3.6;
-  const rpm=readFloat(d,0x3C);
-  const gear=readUInt8(d,0x90)&0x0F;
-  const throttle=readUInt8(d,0x91)/2.55;
-  const brake=readUInt8(d,0x92)/2.55;
-  const currentLap=readInt16(d,0x74);
-  const bestLap=readInt32(d,0x78);
-  const lastLap=readInt32(d,0x7C);
-  const fuel=readFloat(d,0x44);
-  const fuelCap=readFloat(d,0x48);
-  const now=Date.now();
-  data.lapDebug=scanLapDebug(d);
-
-  if(currentLap===0){ lapTimes=[]; lastStoredLapMs=0; lastStoredLapNumber=0; currentLapNumber=0; currentLapStartedAt=0; }
-  if(currentLap>0 && currentLap!==currentLapNumber){ currentLapNumber=currentLap; currentLapStartedAt=now; }
-  if(lastLap>0 && currentLap>1 && (lastLap!==lastStoredLapMs || currentLap!==lastStoredLapNumber)){
-    lapTimes.push(lastLap); lastStoredLapMs=lastLap; lastStoredLapNumber=currentLap;
-  }
-
-  const safeCurrentLap=currentLap>=0&&currentLap<300?currentLap:0;
-  const runningLapMs=currentLapStartedAt&&currentLap>0?Math.max(0,now-currentLapStartedAt):0;
-  const totalMs=sum(lapTimes);
-
-  data.decodeOk=true;
-  data.status='recebendo_udp_decodificado';
-  data.velocidade=Number.isFinite(speed)&&speed>=0&&speed<600?Math.round(speed):0;
-  data.velocidadeMaxima=Math.max(data.velocidadeMaxima||0,data.velocidade);
-  data.rpm=Number.isFinite(rpm)&&rpm>=0&&rpm<20000?Math.round(rpm):0;
-  data.marcha=gear===0?'N':String(gear);
-  data.marchaNumero=gear;
-  data.acelerador=Math.max(0,Math.min(100,Math.round(throttle)));
-  data.freio=Math.max(0,Math.min(100,Math.round(brake)));
-  data.voltasCompletadas=safeCurrentLap;
-  data.voltasCorrigidas=Math.max(0,safeCurrentLap-1);
-  data.voltasCorridas=data.voltasCorrigidas;
-  data.lapTimes=lapTimes.map(lap);
-  data.melhorVolta=lap(bestLap);
-  data.ultimaVolta=lap(lastLap);
-  data.voltaAtualTempo=lap(runningLapMs);
-  data.tempoTotalCorrida=totalMs>0?lap(totalMs):'--';
-  data.mediaVoltas=computeAverage(lapTimes);
-  data.combustivel=Number.isFinite(fuel)?Number(fuel.toFixed(2)):null;
-  data.fuelCapacity=Number.isFinite(fuelCap)?Number(fuelCap.toFixed(2)):null;
-  data.combustivelPorcentagem=fuelCap>0?Math.round((fuel/fuelCap)*100):null;
-  data.note='Pacote decodificado com sucesso. Sessões locais ativas.';
-  return true;
-}
-function resetTelemetry(){
-  data.velocidade=0; data.velocidadeMaxima=0; data.rpm=0; data.marcha='N'; data.marchaNumero=0; data.acelerador=0; data.freio=0;
-  data.melhorVolta='--'; data.ultimaVolta='--'; data.voltaAtualTempo='--'; data.tempoTotalCorrida='--'; data.mediaVoltas='--';
-  data.voltasCompletadas=0; data.voltasCorrigidas=0; data.voltasCorridas=0; data.lapTimes=[];
-  lapTimes=[]; lastStoredLapMs=0; lastStoredLapNumber=0; currentLapNumber=0; currentLapStartedAt=0;
-}
-
-const udp=dgram.createSocket('udp4');
-const heartbeat=dgram.createSocket('udp4');
-udp.on('message', msg=>{
-  data.connected=true; data.updatedAt=Date.now(); data.packetSize=msg.length; data.packetVersion=packetVersion(msg.length); data.ps5Ip=config.ps5Ip;
-  const ok=decodeGT7(msg);
-  if(!ok){ data.decodeOk=false; data.status='recebendo_udp_sem_decode'; data.note='Pacote recebido, mas nao decodificado.'; }
-  console.log('Pacote UDP recebido: '+msg.length+' bytes | decode='+ok+' | vel='+data.velocidade+' | rpm='+data.rpm+' | marcha='+data.marcha);
-});
-udp.bind(UDP_PORT,'0.0.0.0',()=>console.log('UDP ouvindo '+UDP_PORT));
-setInterval(()=>{
-  const hb=Buffer.from('A'); heartbeat.send(hb,0,hb.length,PS5_PORT,config.ps5Ip,()=>{});
-  if(data.updatedAt && Date.now()-data.updatedAt>5000){ data.connected=false; data.status='aguardando_pacotes'; }
-},1000);
-
-const server=http.createServer(async (req,res)=>{
-  if(req.method==='OPTIONS') return json(res,{ok:true});
-  if(req.url==='/api/fields' || req.url==='/api/health' || req.url==='/api/telemetry') return json(res,data);
-  if(req.url==='/api/debug-laps') return json(res,{ok:true, lapDebug:data.lapDebug, lapTimes:data.lapTimes, best:data.melhorVolta, last:data.ultimaVolta, laps:data.voltasCompletadas, corrected:data.voltasCorrigidas});
-  if(req.url==='/api/config' && req.method==='GET') return json(res,{ok:true, config, bridge:{port:PORT, udpPort:UDP_PORT, ps5Port:PS5_PORT}});
-  if(req.url==='/api/config' && req.method==='POST'){
-    try{ const body=JSON.parse(await readBody(req)||'{}'); if(body.ps5Ip){ config.ps5Ip=String(body.ps5Ip).trim(); data.ps5Ip=config.ps5Ip; saveConfig(); } return json(res,{ok:true, config}); }
-    catch(e){ return json(res,{ok:false,error:String(e)}); }
-  }
-  if(req.url==='/api/reset' && req.method==='POST'){ resetTelemetry(); return json(res,{ok:true}); }
-  if(req.url==='/api/sessions' && req.method==='GET') return json(res,{ok:true, sessions:loadSessions()});
-  if(req.url==='/api/sessions' && req.method==='POST'){
-    try{
-      const body=JSON.parse(await readBody(req)||'{}');
-      const sessions=loadSessions();
-      const item={ id: String(Date.now()), name: String(body.name||'Seção '+new Date().toLocaleString('pt-BR')).slice(0,80), date: new Date().toISOString(), ...body };
-      sessions.unshift(item); saveSessions(sessions);
-      return json(res,{ok:true, session:item, count:sessions.length});
-    }catch(e){ return json(res,{ok:false,error:String(e)}); }
-  }
-  return json(res,{ok:true, app:'Telemetria v3 Bridge', endpoints:['/api/fields','/api/config','/api/reset','/api/debug-laps','/api/sessions']});
-});
-server.listen(PORT,'0.0.0.0',()=>console.log('HTTP em '+PORT+' PS5='+config.ps5Ip));
+const http=require('http');
+const dgram=require('dgram');
+const fs=require('fs');
+const path=require('path');
+const PORT=8787,UDP_PORT=33740,PS5_PORT=33739,CONFIG_FILE='./config.json',DATA_DIR='./data',DB_FILE='./data/telemetry-v4.json';
+fs.mkdirSync(DATA_DIR,{recursive:true});
+let config={ps5Ip:process.env.PS5_IP||'192.168.1.68',autoSession:true};try{config={...config,...JSON.parse(fs.readFileSync(CONFIG_FILE,'utf8'))}}catch{}
+let db={version:4,sessions:[],ranking:[],settings:{}};try{db={...db,...JSON.parse(fs.readFileSync(DB_FILE,'utf8'))}}catch{}
+function saveDb(){fs.writeFileSync(DB_FILE,JSON.stringify(db,null,2))}function saveConfig(){fs.writeFileSync(CONFIG_FILE,JSON.stringify(config,null,2))}
+function n(v,d=0){v=Number(v);return Number.isFinite(v)?v:d}function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function sum(a){return a.reduce((x,y)=>x+y,0)}
+function rdF(b,o){try{return b.readFloatLE(o)}catch{return 0}}function rdI32(b,o){try{return b.readInt32LE(o)}catch{return 0}}function rdI16(b,o){try{return b.readInt16LE(o)}catch{return 0}}function rdU8(b,o){try{return b.readUInt8(o)}catch{return 0}}
+function fmt(ms){if(!ms||ms<=0)return'--';let h=Math.floor(ms/36e5);ms%=36e5;let m=Math.floor(ms/6e4);ms%=6e4;let s=Math.floor(ms/1e3),z=Math.floor(ms%1e3);return(h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(z).padStart(3,'0')}
+function validLap(ms){return Number.isFinite(ms)&&ms>=30000&&ms<=900000}
+function avg(arr){arr=arr.filter(validLap);if(!arr.length)return 0;let cut=arr.length>=10?3:(arr.length>=5?2:0),u=arr.slice().sort((a,b)=>a-b);if(cut&&u.length>cut*2)u=u.slice(cut,-cut);return u.length?Math.round(sum(u)/u.length):0}
+function stdev(a){if(a.length<2)return 0;let m=sum(a)/a.length;return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/a.length)}
+function analysis(laps){let arr=laps.map(l=>l.ms).filter(validLap),best=arr.length?Math.min(...arr):0,last=arr.length?arr[arr.length-1]:0,total=sum(arr),am=avg(arr),cons=arr.length>1&&best?Math.max(0,100-Math.round(stdev(arr)/best*100)):(arr.length?100:0);return{laps:laps.length,bestMs:best,best:fmt(best),lastMs:last,last:fmt(last),totalMs:total,total:fmt(total),avgMs:am,average:fmt(am),deltaBest:best&&last?fmt(Math.max(0,last-best)):'--',consistency:arr.length?cons+'%':'--',grade:!arr.length?'--':cons>=97?'A+':cons>=93?'A':cons>=87?'B':cons>=78?'C':'D',heatmap:laps.map((l,i)=>({lap:i+1,time:fmt(l.ms),rating:l.ms===best?'Boa':(best&&l.ms>best*1.04?'Ruim':'Média')}))}}
+function coach(parts){if(!parts.length)return['Média','Média','Média','Média'];let base=Math.max(1,...parts.map(p=>p.speed||0)),out=[];for(let i=0;i<4;i++){let c=parts.slice(Math.floor(parts.length*i/4),Math.floor(parts.length*(i+1)/4));let sp=sum(c.map(x=>x.speed||0))/(c.length||1),br=sum(c.map(x=>x.brake||0))/(c.length||1),th=sum(c.map(x=>x.throttle||0))/(c.length||1);let score=sp/base*100-br*.18+th*.05;out.push(score>=88?'Boa':score>=72?'Média':'Ruim')}return out}
+function rotl(v,c){return((v<<c)|(v>>>(32-c)))>>>0}function qr(x,a,b,c,d){x[b]^=rotl((x[a]+x[d])>>>0,7);x[c]^=rotl((x[b]+x[a])>>>0,9);x[d]^=rotl((x[c]+x[b])>>>0,13);x[a]^=rotl((x[d]+x[c])>>>0,18)}
+function salsaBlock(key,iv,cnt){let sig=Buffer.from('expand 32-byte k'),st=new Uint32Array(16);st[0]=sig.readUInt32LE(0);st[5]=sig.readUInt32LE(4);st[10]=sig.readUInt32LE(8);st[15]=sig.readUInt32LE(12);for(let i=0;i<4;i++)st[1+i]=key.readUInt32LE(i*4);for(let i=0;i<4;i++)st[11+i]=key.readUInt32LE(16+i*4);st[6]=iv.readUInt32LE(0);st[7]=iv.readUInt32LE(4);st[8]=cnt>>>0;st[9]=0;let x=new Uint32Array(st);for(let i=0;i<10;i++){qr(x,0,4,8,12);qr(x,5,9,13,1);qr(x,10,14,2,6);qr(x,15,3,7,11);qr(x,0,1,2,3);qr(x,5,6,7,4);qr(x,10,11,8,9);qr(x,15,12,13,14)}let out=Buffer.alloc(64);for(let i=0;i<16;i++)out.writeUInt32LE((x[i]+st[i])>>>0,i*4);return out}
+function salsaXor(buf,key,iv){let out=Buffer.alloc(buf.length),cnt=0;for(let off=0;off<buf.length;off+=64){let block=salsaBlock(key,iv,cnt++);for(let i=0;i<Math.min(64,buf.length-off);i++)out[off+i]=buf[off+i]^block[i]}return out}
+function decrypt(msg){try{let key=Buffer.from('Simulator Interface Packet GT7 ver 0.0').subarray(0,32),iv1=msg.readUInt32LE(0x40),iv2=(iv1^0xDEADBEAF)>>>0,iv=Buffer.alloc(8);iv.writeUInt32LE(iv2,0);iv.writeUInt32LE(iv1,4);let out=salsaXor(msg,key,iv);return out.readUInt32LE(0)===0x47375330?out:null}catch{return null}}
+let live={connected:false,status:'aguardando_pacotes',decodeOk:false,updatedAt:null,packetSize:0,packetVersion:'?',ps5Ip:config.ps5Ip,sessionState:'WAITING',currentSessionId:null,velocidade:0,velocidadeMaxima:0,rpm:0,marcha:'N',marchaNumero:0,acelerador:0,freio:0,combustivel:null,combustivelPorcentagem:null,fuelCapacity:null,melhorVolta:'--',ultimaVolta:'--',voltaAtualTempo:'--',tempoTotalCorrida:'--',mediaVoltas:'--',voltasCompletadas:0,voltasCorrigidas:0,voltasCorridas:0,lapTimes:[],analysis:analysis([]),coach:[],lapDebug:{},note:'Core V4 Raspberry ativo'};
+let active=null,lastLapMs=0,lastLapNo=0,currentLap=0,currentLapAt=0,movingSince=0,stoppedSince=0,samples=[];
+function startSession(name='Nova seção'){active={id:'s-'+Date.now(),name,startedAt:new Date().toISOString(),endedAt:null,laps:[],coach:[],maxSpeed:0,analysis:analysis([])};Object.assign(live,{sessionState:'RUNNING',currentSessionId:active.id,velocidadeMaxima:0,melhorVolta:'--',ultimaVolta:'--',tempoTotalCorrida:'--',mediaVoltas:'--',voltasCompletadas:0,voltasCorrigidas:0,voltasCorridas:0,lapTimes:[],analysis:analysis([]),coach:[]});lastLapMs=0;lastLapNo=0;currentLap=0;currentLapAt=0;samples=[];return active}
+function finishSession(name){if(!active)return null;if(name)active.name=String(name).slice(0,80);active.endedAt=new Date().toISOString();active.analysis=analysis(active.laps);db.sessions.unshift(active);db.sessions=db.sessions.slice(0,300);if(active.analysis.bestMs)db.ranking.push({sessionId:active.id,name:active.name,date:active.endedAt,bestMs:active.analysis.bestMs,best:active.analysis.best,laps:active.laps.length});db.ranking=db.ranking.sort((a,b)=>a.bestMs-b.bestMs).slice(0,100);saveDb();let done=active;active=null;live.sessionState='FINISHED';live.currentSessionId=null;return done}
+function registerLap(ms,no){if(!validLap(ms))return false;if(!active)startSession('Sessão automática');let token=no+':'+ms;if(active.laps.some(l=>l.token===token))return false;let parts=coach(samples.splice(0));let rec={lap:active.laps.length+1,ms,time:fmt(ms),token,at:new Date().toISOString(),maxSpeed:live.velocidadeMaxima,coach:parts};active.laps.push(rec);active.maxSpeed=Math.max(active.maxSpeed||0,live.velocidadeMaxima||0);active.coach.unshift({lap:rec.lap,time:rec.time,parts});active.analysis=analysis(active.laps);Object.assign(live,{analysis:active.analysis,coach:active.coach.slice(0,12),lapTimes:active.laps.map(l=>l.time),tempoTotalCorrida:active.analysis.total,mediaVoltas:active.analysis.average,melhorVolta:active.analysis.best,ultimaVolta:rec.time,voltasCompletadas:active.laps.length,voltasCorrigidas:active.laps.length,voltasCorridas:active.laps.length});return true}
+function autoSession(){let now=Date.now(),moving=live.velocidade>20&&live.rpm>1500&&live.marchaNumero>0;if(!active&&config.autoSession&&moving){movingSince=movingSince||now;if(now-movingSince>5000)startSession('Sessão automática')}else if(!moving)movingSince=0;if(active){let stopped=live.velocidade<5;if(stopped)stoppedSince=stoppedSince||now;else stoppedSince=0;let last=active.laps.length?new Date(active.laps[active.laps.length-1].at).getTime():new Date(active.startedAt).getTime();if(stopped&&now-stoppedSince>30000&&now-last>60000)finishSession()}}
+function decode(msg){let d=decrypt(msg);if(!d)return false;let speed=rdF(d,0x4C)*3.6,rpm=rdF(d,0x3C),gear=rdU8(d,0x90)&15,th=rdU8(d,0x91)/2.55,br=rdU8(d,0x92)/2.55,lapNo=rdI16(d,0x74),best=rdI32(d,0x78),last=rdI32(d,0x7C),fuel=rdF(d,0x44),cap=rdF(d,0x48),now=Date.now();live.lapDebug={packetSize:d.length,knownOffsets:{currentLap_0x74_i16:lapNo,bestLap_0x78_i32:best,lastLap_0x7c_i32:last,speed_0x4c:Number(rdF(d,0x4c).toFixed(3)),rpm_0x3c:Number(rdF(d,0x3c).toFixed(3))}};live.velocidade=Number.isFinite(speed)&&speed>=0&&speed<600?Math.round(speed):0;live.rpm=Number.isFinite(rpm)&&rpm>=0&&rpm<20000?Math.round(rpm):0;live.marcha=gear===0?'N':String(gear);live.marchaNumero=gear;live.acelerador=clamp(Math.round(th),0,100);live.freio=clamp(Math.round(br),0,100);live.combustivel=Number.isFinite(fuel)?Number(fuel.toFixed(2)):null;live.fuelCapacity=Number.isFinite(cap)?Number(cap.toFixed(2)):null;live.combustivelPorcentagem=cap>0?Math.round(fuel/cap*100):null;if(active)live.velocidadeMaxima=Math.max(live.velocidadeMaxima,live.velocidade);samples.push({speed:live.velocidade,rpm:live.rpm,throttle:live.acelerador,brake:live.freio,at:now});if(samples.length>1000)samples=samples.slice(-1000);if(lapNo>0&&lapNo!==currentLap){currentLap=lapNo;currentLapAt=now}live.voltaAtualTempo=currentLapAt&&lapNo>0?fmt(now-currentLapAt):'--';if(!active&&best>0)live.melhorVolta=fmt(best);if(last>0&&lapNo>1&&(last!==lastLapMs||lapNo!==lastLapNo)){lastLapMs=last;lastLapNo=lapNo;registerLap(last,lapNo)}autoSession();live.decodeOk=true;live.status='recebendo_udp_decodificado';live.note='Core V4 processando no Raspberry';return true}
+function resetLive(){startSession('Nova seção');Object.assign(live,{velocidade:0,rpm:0,marcha:'N',marchaNumero:0,acelerador:0,freio:0,combustivel:null,combustivelPorcentagem:null})}
+function js(res,obj,code=200){res.writeHead(code,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS'});res.end(JSON.stringify(obj))}function body(req){return new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))})}
+const udp=dgram.createSocket('udp4'),hb=dgram.createSocket('udp4');udp.on('message',msg=>{live.connected=true;live.updatedAt=Date.now();live.packetSize=msg.length;live.packetVersion=msg.length===368?'C':msg.length===296?'A':msg.length===316?'B':'?';live.ps5Ip=config.ps5Ip;if(!decode(msg)){live.decodeOk=false;live.status='recebendo_udp_sem_decode'}});udp.bind(UDP_PORT,'0.0.0.0',()=>console.log('UDP ouvindo '+UDP_PORT));setInterval(()=>{let b=Buffer.from('A');hb.send(b,0,b.length,PS5_PORT,config.ps5Ip,()=>{});if(live.updatedAt&&Date.now()-live.updatedAt>5000){live.connected=false;live.status='aguardando_pacotes'}},1000);
+http.createServer(async(req,res)=>{if(req.method==='OPTIONS')return js(res,{ok:true});let u=new URL(req.url,'http://x');if(u.pathname==='/'||u.pathname==='/api/health')return js(res,{ok:true,app:'Telemetria v4 Core Raspberry',version:4,status:live.status,sessionState:live.sessionState,endpoints:['/api/fields','/api/current-session','/api/sessions','/api/ranking','/api/coach','/api/session/start','/api/session/finish','/api/reset','/api/config']});if(['/api/fields','/api/live','/api/telemetry'].includes(u.pathname))return js(res,live);if(u.pathname==='/api/current-session')return js(res,{ok:true,active,live});if(u.pathname==='/api/sessions'&&req.method==='GET')return js(res,{ok:true,sessions:db.sessions,active});if(u.pathname==='/api/ranking')return js(res,{ok:true,ranking:db.ranking});if(u.pathname==='/api/coach')return js(res,{ok:true,coach:live.coach});if(u.pathname==='/api/debug-laps')return js(res,{ok:true,lapDebug:live.lapDebug,lapTimes:live.lapTimes,analysis:live.analysis});if(u.pathname==='/api/config'&&req.method==='GET')return js(res,{ok:true,config,bridge:{port:PORT,udpPort:UDP_PORT,ps5Port:PS5_PORT},dataFile:DB_FILE});if(u.pathname==='/api/config'&&req.method==='POST'){try{let j=JSON.parse(await body(req)||'{}');if(j.ps5Ip){config.ps5Ip=String(j.ps5Ip).trim();live.ps5Ip=config.ps5Ip}if(typeof j.autoSession==='boolean')config.autoSession=j.autoSession;saveConfig();return js(res,{ok:true,config})}catch(e){return js(res,{ok:false,error:String(e)},400)}}if(u.pathname==='/api/session/start'&&req.method==='POST'){let j={};try{j=JSON.parse(await body(req)||'{}')}catch{}return js(res,{ok:true,session:startSession(j.name||'Nova seção')})}if(u.pathname==='/api/session/finish'&&req.method==='POST'){let j={};try{j=JSON.parse(await body(req)||'{}')}catch{}return js(res,{ok:true,session:finishSession(j.name)})}if(u.pathname==='/api/sessions'&&req.method==='POST'){try{let j=JSON.parse(await body(req)||'{}'),s=active?finishSession(j.name):{id:'manual-'+Date.now(),name:String(j.name||'Seção manual').slice(0,80),startedAt:j.date||new Date().toISOString(),endedAt:new Date().toISOString(),laps:j.lapRecords||[],analysis:j.analysis||{},maxSpeed:j.max||0};if(s&&!db.sessions.some(x=>x.id===s.id)){db.sessions.unshift(s);saveDb()}return js(res,{ok:true,session:s,count:db.sessions.length})}catch(e){return js(res,{ok:false,error:String(e)},400)}}if(u.pathname==='/api/reset'&&req.method==='POST'){resetLive();return js(res,{ok:true,live})}return js(res,{ok:true,app:'Telemetria v4 Core Raspberry'})}).listen(PORT,'0.0.0.0',()=>console.log('HTTP em '+PORT+' PS5='+config.ps5Ip));
