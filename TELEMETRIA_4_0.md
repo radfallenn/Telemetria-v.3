@@ -1,13 +1,16 @@
-# GT7 Telemetria 4.0 — Cockpit Modular
+# GT7 Telemetria 4.0 — Correção Stitch / Raspberry / PS5
 
-Esta branch contém a versão **Telemetria 4.0** preparada para gerar APK via GitHub Actions.
+Esta branch contém a versão **Telemetria 4.0** preparada para gerar APK e para rodar o Bridge no Raspberry.
 
-## O que está nesta branch
+## Correções desta revisão
 
-- App Android/Web em `www/index.html`.
-- Configuração Capacitor em `capacitor.config.ts`.
-- Workflow de APK em `.github/workflows/build-apk.yml`.
-- Patch Android em `scripts/patch-android-v4.js` para permitir conexão HTTP local com o Raspberry.
+- Interface refeita seguindo o arquivo anexado `stitch_gt7_telemetry_modular_cockpit.zip` e o `DESIGN.md` Apex Telemetry System.
+- Visual preto/grafite, dados mono, cyan para aceleração/estado, vermelho para freio/erro e amarelo para RPM/UDM.
+- APK mantém a tela do celular sempre ativa usando Wake Lock no WebView e `FLAG_KEEP_SCREEN_ON` no Android nativo.
+- Android liberado para HTTP local, necessário para `http://IP_DO_RASPBERRY:8787`.
+- App agora tem tela SET com Bridge URL, IP do PS5, salvar configuração no Raspberry, iniciar seção, salvar seção e zerar tudo.
+- Repositório agora inclui Bridge real do Raspberry em `bridge/server.cjs`.
+- Bridge envia heartbeat para o PS5 na porta `33739` e escuta UDP do GT7 na porta `33740`.
 
 ## Como gerar o APK
 
@@ -17,27 +20,41 @@ Esta branch contém a versão **Telemetria 4.0** preparada para gerar APK via Gi
 4. Abra **Build APK Telemetria 4.0**.
 5. Clique em **Run workflow**.
 6. Escolha a branch `telemetria-4.0`.
-7. Quando terminar, baixe o artefato **GT7-Telemetria-V4-debug-apk**.
+7. Baixe o artefato **GT7-Telemetria-V4-debug-apk**.
 
-## Como usar no celular
+## Como rodar o Bridge no Raspberry
 
-1. Instale o APK.
-2. Abra o app.
-3. Em **Bridge URL**, coloque o endereço do Raspberry, por exemplo:
-
-```text
-http://192.168.1.50:8787
+```bash
+cd ~/Telemetria-v.3
+git fetch
+git checkout telemetria-4.0
+cp .env.example .env
+nano .env
+npm install
+npm start
 ```
 
-4. Toque em **Conectar**.
+Ou como serviço:
 
-## Arquitetura
+```bash
+bash bridge/install-raspberry.sh
+```
 
-- O Raspberry continua sendo o servidor principal.
-- O Android é apenas painel remoto.
-- O app não deve ser a fonte principal das voltas.
-- O app mostra dados, controla sessão, salva layout e monitora conexão.
+Teste no navegador ou no celular:
 
-## Observação importante
+```text
+http://IP_DO_RASPBERRY:8787/api/health
+```
 
-Esta branch prepara o APK do painel. Para registrar corrida sem depender do celular, o backend V4 precisa estar rodando no Raspberry na porta `8787`.
+## Como conectar no app
+
+No app, abra **SET** e preencha:
+
+```text
+Bridge URL: http://IP_DO_RASPBERRY:8787
+IP do PS5: IP_DO_PS5
+```
+
+Toque em **CONECTAR AO RASPBERRY** e depois em **SALVAR CONFIG NO RASPBERRY**.
+
+O PS5 não conecta direto ao Android. Quem conecta ao PS5 é o Raspberry. O Android apenas conversa com o Raspberry.
