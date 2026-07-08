@@ -1,7 +1,11 @@
 {
-  "name": "telemetria-v3",
-  "version": "3.0.0",
+  "name": "telemetria-v4-cockpit-modular",
+  "version": "4.0.0",
   "private": true,
+  "scripts": {
+    "sync": "npx cap sync android",
+    "apk:debug": "npx cap sync android && cd android && ./gradlew assembleDebug"
+  },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
     "@capacitor/core": "^7.4.3"
