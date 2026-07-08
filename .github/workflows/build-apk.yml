@@ -25,6 +25,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Patch app
         run: node scripts/patch-index.js
+      - name: Patch advanced widgets
+        run: node scripts/patch-advanced-widgets.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
