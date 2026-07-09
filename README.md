@@ -1,41 +1,80 @@
-# GT7 Telemetria 4.0
+# GT7 Telemetria V4 Clean
 
 Sistema de telemetria para Gran Turismo 7 com Raspberry como Bridge principal e Android como painel remoto.
 
-## Portas oficiais nesta configuração
+## Separação correta das versões
 
-- Meu Dia Pro: `8787`
-- GT7 Telemetria: `8788`
-- UDP GT7: `33740`
-- Heartbeat PS5: `33739`
+- **V3**: referência antiga. Não usar para build novo.
+- **V4 Clean**: versão oficial atual da telemetria GT7.
+- **Servidor de teste**: não faz parte da V4 Clean e deve ficar parado/removido.
+- **Meu Dia Pro**: continua usando a porta `8787`.
+- **GT7 Telemetria V4 Clean**: usa a porta `8788`.
 
-## Versão atual da branch telemetria-4.0
+## Portas oficiais
 
-- Interface refeita no visual do arquivo anexado Stitch/Apex Telemetry System.
-- Bridge Raspberry incluído em `bridge/server.cjs`.
-- APK com tela sempre ativa.
-- Android liberado para conexão HTTP local.
-- APK 4.0.3 com Bridge padrão em `http://IP_DO_RASPBERRY:8788`.
-- Configuração do IP do PS5 feita pelo app e salva no Raspberry.
+- Meu Dia Pro HTTP: `8787`
+- GT7 Telemetria HTTP: `8788`
+- GT7 UDP recebido do PS5: `33740`
+- Heartbeat enviado ao PS5: `33739`
 
-## Rodar no Raspberry
+## Regra principal
 
-```bash
-git checkout telemetria-4.0
-cp .env.example .env
-nano .env
-npm install
-PORT=8788 npm start
-```
-
-Teste:
+O fluxo correto é:
 
 ```text
-http://IP_DO_RASPBERRY:8788/api/health
+PS5 / GT7 -> UDP 33740 -> Raspberry Bridge V4 -> HTTP 8788 -> APK Android
 ```
 
-## Gerar APK
+O Android não calcula corrida e não registra volta como fonte principal.
 
-No GitHub, abra **Actions > Build APK Telemetria 4.0 > Run workflow** usando a branch `telemetria-4.0`.
+## Limpar mistura V3/V4/teste no Raspberry
 
-O artefato gerado será **GT7-Telemetria-V4-8788-debug-apk**.
+Na pasta do projeto, rode:
+
+```bash
+cd ~/telemetria-v3
+bash scripts/reset-telemetria-v4-clean.sh
+```
+
+Opcional, informando IP real do PS5:
+
+```bash
+cd ~/telemetria-v3
+PS5_IP=192.168.1.71 PORT=8788 bash scripts/reset-telemetria-v4-clean.sh
+```
+
+Esse script para servidor de teste, remove serviço antigo, grava `.env` limpo, instala dependências e sobe `gt7-telemetria-v4.service` na porta `8788`.
+
+## Testes
+
+```bash
+curl http://localhost:8788/api/health
+curl http://localhost:8788/api/live
+curl http://localhost:8788/api/fields
+```
+
+No celular/APK:
+
+```text
+http://IP_DO_RASPBERRY:8788
+```
+
+## APK
+
+No GitHub, abra:
+
+```text
+Actions -> Build APK Telemetria 4.0 -> Run workflow
+```
+
+Branch:
+
+```text
+telemetria-4.0
+```
+
+Artefato:
+
+```text
+GT7-Telemetria-V4-8788-debug-apk
+```
