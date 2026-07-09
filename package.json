@@ -1,6 +1,6 @@
 {
   "name": "gt7-telemetria-v4-cockpit-modular",
-  "version": "4.0.1",
+  "version": "4.0.3",
   "private": true,
   "scripts": {
     "start": "NODE_ENV=production node bridge/server.cjs",
