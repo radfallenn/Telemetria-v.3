@@ -10,13 +10,16 @@ if (!html.includes('href="identity-track.css"')) {
 if (!html.includes('src="identity-track.js"')) {
   html = html.replace('</body>', '<script src="identity-track.js"></script></body>');
 }
+if (!html.includes('src="navigation-guard.js"')) {
+  html = html.replace('</body>', '<script src="navigation-guard.js"></script></body>');
+}
 if (!html.includes('viewport-fit=cover')) {
   html = html.replace('user-scalable=no', 'user-scalable=no,viewport-fit=cover');
 }
 
-for (const marker of ['href="identity-track.css"', 'src="identity-track.js"', 'viewport-fit=cover']) {
+for (const marker of ['href="identity-track.css"', 'src="identity-track.js"', 'src="navigation-guard.js"', 'viewport-fit=cover']) {
   if (!html.includes(marker)) throw new Error(`Falha ao aplicar identidade/fullscreen: ${marker}`);
 }
 
 fs.writeFileSync(target, html);
-console.log('Identificação automática e fullscreen aplicados:', target);
+console.log('Identificação, fullscreen e navegação segura aplicados:', target);
