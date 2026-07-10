@@ -33,6 +33,9 @@ jobs:
       - name: Patch Telemetria Port 8788
         run: node scripts/patch-port-8788.js
 
+      - name: Aplicar pagina Telemetria completa
+        run: node scripts/apply-full-telemetry.js
+
       - name: Add Android
         run: npx cap add android
 
@@ -51,5 +54,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-8788-debug-apk
+          name: GT7-Telemetria-V4-Full-Telemetry-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
