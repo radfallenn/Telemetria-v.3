@@ -35,11 +35,63 @@ if (!manifest.includes('android:usesCleartextTraffic="true"')) {
 if (!manifest.includes('android:networkSecurityConfig="@xml/network_security_config"')) {
   manifest = manifest.replace('<application', '<application android:networkSecurityConfig="@xml/network_security_config"');
 }
+if (!manifest.includes('android:windowLayoutInDisplayCutoutMode="shortEdges"')) {
+  manifest = manifest.replace(
+    /(<activity\b[^>]*android:name="(?:\.MainActivity|com\.rad\.gt7telemetriav4\.MainActivity)"[^>]*)(>)/,
+    '$1 android:windowLayoutInDisplayCutoutMode="shortEdges"$2'
+  );
+}
+
 fs.mkdirSync(xmlDir, { recursive: true });
 fs.writeFileSync(networkPath, `<?xml version="1.0" encoding="utf-8"?>\n<network-security-config>\n  <base-config cleartextTrafficPermitted="true">\n    <trust-anchors>\n      <certificates src="system" />\n      <certificates src="user" />\n    </trust-anchors>\n  </base-config>\n</network-security-config>\n`);
 fs.writeFileSync(manifestPath, manifest);
 
 fs.mkdirSync(path.dirname(javaMain), { recursive: true });
-fs.writeFileSync(javaMain, `package com.rad.gt7telemetriav4;\n\nimport android.os.Bundle;\nimport android.view.WindowManager;\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {\n  @Override\n  protected void onCreate(Bundle savedInstanceState) {\n    super.onCreate(savedInstanceState);\n    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);\n  }\n}\n`);
+fs.writeFileSync(javaMain, `package com.rad.gt7telemetriav4;
+
+import android.os.Build;
+import android.os.Bundle;
+import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    hideSystemUi();
+  }
+
+  @Override
+  public void onWindowFocusChanged(boolean hasFocus) {
+    super.onWindowFocusChanged(hasFocus);
+    if (hasFocus) hideSystemUi();
+  }
+
+  private void hideSystemUi() {
+    final View decorView = getWindow().getDecorView();
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      getWindow().setDecorFitsSystemWindows(false);
+      WindowInsetsController controller = decorView.getWindowInsetsController();
+      if (controller != null) {
+        controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+        controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+      }
+    } else {
+      decorView.setSystemUiVisibility(
+        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+          | View.SYSTEM_UI_FLAG_FULLSCREEN
+          | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+          | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+          | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+          | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+      );
+    }
+  }
+}
+`);
 if (fs.existsSync(kotlinMain)) fs.unlinkSync(kotlinMain);
-console.log('Telemetria V4: HTTP local, permissões de rede e tela sempre ativa aplicados.');
+console.log('Telemetria V4: HTTP local, rede, tela ativa e fullscreen imersivo aplicados.');
