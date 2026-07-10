@@ -33,7 +33,9 @@ const externalFiles = [
   ['telemetry-bc.css', 'href="telemetry-bc.css"'],
   ['identity-track.js', 'src="identity-track.js"'],
   ['identity-track.css', 'href="identity-track.css"'],
-  ['navigation-guard.js', 'src="navigation-guard.js"']
+  ['navigation-guard.js', 'src="navigation-guard.js"'],
+  ['dashboard-vertical-fuel.js', 'src="dashboard-vertical-fuel.js"'],
+  ['dashboard-vertical-fuel.css', 'href="dashboard-vertical-fuel.css"']
 ];
 for (const [fileName, marker] of externalFiles) {
   if (!html.includes(marker)) throw new Error(`Referência ausente no HTML: ${marker}`);
@@ -50,7 +52,11 @@ const identityCode = fs.readFileSync(path.join(path.dirname(target), 'identity-t
 if (identityCode.includes('    enableFullscreen();')) {
   throw new Error('Fullscreen web ainda consome o primeiro toque');
 }
+if (!html.includes('class="grid dashGrid"')) throw new Error('Primeira página não está em coluna vertical');
+if (!html.includes('id="fuelDash"') || !html.includes('id="fuelMiniMarker"')) throw new Error('Célula de combustível incompleta');
+if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível no dashboard');
+if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com última volta oculta ausente');
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, navegação, ciclos de renderização e fullscreen validados:', target);
+console.log('Runtime, navegação, dashboard vertical, combustível e fullscreen validados:', target);
