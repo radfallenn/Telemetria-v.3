@@ -52,11 +52,15 @@ const identityCode = fs.readFileSync(path.join(path.dirname(target), 'identity-t
 if (identityCode.includes('    enableFullscreen();')) {
   throw new Error('Fullscreen web ainda consome o primeiro toque');
 }
-if (!html.includes('class="grid dashGrid"')) throw new Error('Primeira página não está em coluna vertical');
+const dashboardCss = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.css'), 'utf8');
+if (!dashboardCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))')) {
+  throw new Error('Cards inferiores não estão em duas colunas');
+}
+if (!html.includes('class="grid dashGrid"')) throw new Error('Grid inferior do dashboard ausente');
 if (!html.includes('id="fuelDash"') || !html.includes('id="fuelMiniMarker"')) throw new Error('Célula de combustível incompleta');
 if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível no dashboard');
 if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com última volta oculta ausente');
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, navegação, dashboard vertical, combustível e fullscreen validados:', target);
+console.log('Runtime, navegação, topo preservado, duas colunas e combustível validados:', target);
