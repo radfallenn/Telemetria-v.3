@@ -36,6 +36,9 @@ jobs:
       - name: Aplicar pagina Telemetria completa
         run: node scripts/apply-full-telemetry.js
 
+      - name: Aplicar carro pista e fullscreen
+        run: node scripts/apply-identity-fullscreen.js
+
       - name: Corrigir runtime e navegacao
         run: node scripts/fix-app-runtime.js
 
@@ -57,5 +60,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-Full-Telemetry-debug-apk
+          name: GT7-Telemetria-V4-Full-Identity-Fullscreen-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
