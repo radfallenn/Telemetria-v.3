@@ -32,7 +32,8 @@ const externalFiles = [
   ['telemetry-bc.js', 'src="telemetry-bc.js"'],
   ['telemetry-bc.css', 'href="telemetry-bc.css"'],
   ['identity-track.js', 'src="identity-track.js"'],
-  ['identity-track.css', 'href="identity-track.css"']
+  ['identity-track.css', 'href="identity-track.css"'],
+  ['navigation-guard.js', 'src="navigation-guard.js"']
 ];
 for (const [fileName, marker] of externalFiles) {
   if (!html.includes(marker)) throw new Error(`Referência ausente no HTML: ${marker}`);
@@ -41,7 +42,15 @@ for (const [fileName, marker] of externalFiles) {
   if (fileName.endsWith('.js')) new Function(fs.readFileSync(filePath, 'utf8'));
 }
 
+const telemetryCode = fs.readFileSync(path.join(path.dirname(target), 'telemetry-bc.js'), 'utf8');
+if (!telemetryCode.includes("page.classList.contains('on')")) {
+  throw new Error('Telemetria ainda renderiza quando a janela está fechada');
+}
+const identityCode = fs.readFileSync(path.join(path.dirname(target), 'identity-track.js'), 'utf8');
+if (identityCode.includes('    enableFullscreen();')) {
+  throw new Error('Fullscreen web ainda consome o primeiro toque');
+}
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, navegação, identidade e fullscreen validados:', target);
+console.log('Runtime, navegação, ciclos de renderização e fullscreen validados:', target);
