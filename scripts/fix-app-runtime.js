@@ -60,6 +60,9 @@ const fuelCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vert
 for (const marker of ['estimateRemainingLaps', 'consumedSessionLiters', 'levelLiters', 'VOLTAS']) {
   if (!fuelCode.includes(marker)) throw new Error(`Autonomia em voltas incompleta: ${marker}`);
 }
+for (const marker of ["ok:Boolean(g(L,'packet.connected'", "('OK · '+f.ver)", "'PS5 WAIT'", "'BRIDGE OFF'"]) {
+  if (!html.includes(marker)) throw new Error(`Correção de conexão ausente: ${marker}`);
+}
 if (!html.includes('class="grid dashGrid"')) throw new Error('Grid inferior do dashboard ausente');
 if (!html.includes('id="fuelDash"') || !html.includes('id="fuelMiniMarker"')) throw new Error('Célula de combustível incompleta');
 if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível no dashboard');
@@ -67,4 +70,4 @@ if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com úl
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, navegação, duas colunas, gráfico e autonomia em voltas validados:', target);
+console.log('Runtime, navegação, conexão, duas colunas, gráfico e autonomia validados:', target);
