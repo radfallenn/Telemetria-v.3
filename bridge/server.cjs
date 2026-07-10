@@ -5,13 +5,18 @@ const dgram = require('dgram');
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '4.1.0-full-telemetry';
+const VERSION = '4.1.1-full-telemetry-autofallback';
 const PORT = Number(process.env.PORT || 8788);
 const UDP_PORT = Number(process.env.GT7_UDP_PORT || 33740);
 const HEARTBEAT_PORT = Number(process.env.GT7_HEARTBEAT_PORT || 33739);
+const CONNECTED_TIMEOUT_MS = Number(process.env.GT7_CONNECTED_TIMEOUT_MS || 5000);
+const FALLBACK_STEP_MS = Number(process.env.GT7_FALLBACK_STEP_MS || 4500);
 let PS5_IP = process.env.PS5_IP || '192.168.1.71';
 let REQUESTED_PACKET = String(process.env.GT7_PACKET_VERSION || 'C').slice(0, 1);
 if (!['A', 'B', '~', 'C'].includes(REQUESTED_PACKET)) REQUESTED_PACKET = 'C';
+let ACTIVE_PACKET = REQUESTED_PACKET;
+let fallbackIndex = 0;
+let lastPacketSwitchAt = Date.now();
 
 const KEY = Buffer.from('Simulator Interface Packet GT7 ver 0.0', 'ascii').subarray(0, 32);
 const XOR_BY_SIZE = { 296: 0xDEADBEAF, 316: 0xDEADBEEF, 344: 0x55FABB4F, 368: 0xDEADBEEF };
@@ -21,6 +26,32 @@ const STATE_FILE = path.join(DATA_DIR, 'full-telemetry-state.json');
 
 const round = (v, d = 2) => Number.isFinite(v) ? Number(v.toFixed(d)) : null;
 const nowIso = () => new Date().toISOString();
+
+function packetSequence(preferred) {
+  if (preferred === 'C') return ['C', 'B', 'A'];
+  if (preferred === '~') return ['~', 'B', 'A'];
+  if (preferred === 'B') return ['B', 'A'];
+  return ['A'];
+}
+
+function packetIsFresh() {
+  return Boolean(lastPacketAt && Date.now() - lastPacketAt < CONNECTED_TIMEOUT_MS);
+}
+
+function selectActivePacket(packet, reason = '') {
+  if (!['A', 'B', '~', 'C'].includes(packet)) return;
+  if (ACTIVE_PACKET !== packet) {
+    console.log(`Pacote ativo ${ACTIVE_PACKET} -> ${packet}${reason ? ` (${reason})` : ''}`);
+  }
+  ACTIVE_PACKET = packet;
+  const sequence = packetSequence(REQUESTED_PACKET);
+  fallbackIndex = Math.max(0, sequence.indexOf(packet));
+  lastPacketSwitchAt = Date.now();
+  if (live?.packet) {
+    live.packet.requestedVersion = REQUESTED_PACKET;
+    live.packet.activeVersion = ACTIVE_PACKET;
+  }
+}
 
 function readState() {
   try {
@@ -39,6 +70,7 @@ function saveState() {
 const persisted = readState();
 if (persisted.config?.ps5Ip) PS5_IP = persisted.config.ps5Ip;
 if (['A', 'B', '~', 'C'].includes(persisted.config?.packetVersion)) REQUESTED_PACKET = persisted.config.packetVersion;
+ACTIVE_PACKET = REQUESTED_PACKET;
 let sessions = Array.isArray(persisted.sessions) ? persisted.sessions : [];
 
 let packetCount = 0;
@@ -69,7 +101,7 @@ function newSession() {
 
 function defaultLive() {
   return {
-    packet: { connected: false, version: '-', requestedVersion: REQUESTED_PACKET, size: 0, ageMs: null, packetId: 0, count: 0, decodeErrors: 0 },
+    packet: { connected: false, version: '-', requestedVersion: REQUESTED_PACKET, activeVersion: ACTIVE_PACKET, size: 0, ageMs: null, packetId: 0, count: 0, decodeErrors: 0 },
     car: { speedKmh: 0, rpm: 0, gear: 'N', suggestedGear: 0, maxSpeedSessionKmh: 0, carCode: null, category: null },
     input: { throttlePct: 0, brakePct: 0, throttleFilteredPct: null, brakeFilteredPct: null },
     lap: { currentLap: 0, totalLaps: 0, bestLapMs: null, lastLapMs: null, currentLapMs: null },
@@ -165,7 +197,8 @@ function updateSession(t) {
 
 function applyDecoded(t) {
   updateSession(t);
-  live.packet={connected:true,version:t.packetVersion,requestedVersion:REQUESTED_PACKET,size:t.packetSize,ageMs:0,packetId:t.packetId,count:packetCount,decodeErrors};
+  selectActivePacket(t.packetVersion, 'pacote detectado');
+  live.packet={connected:true,version:t.packetVersion,requestedVersion:REQUESTED_PACKET,activeVersion:ACTIVE_PACKET,size:t.packetSize,ageMs:0,packetId:t.packetId,count:packetCount,decodeErrors};
   live.car={speedKmh:t.motion.speedKmh,rpm:t.engine.rpm,gear:t.transmission.currentGear===0?'N':String(t.transmission.currentGear),suggestedGear:t.transmission.suggestedGear,maxSpeedSessionKmh:round(currentSession.maxSpeedKmh,1),carCode:t.carCode,category:t.packetC?.carCategory||null};
   live.input={throttlePct:t.input.throttlePct,brakePct:t.input.brakePct,throttleFilteredPct:t.packetTilda?.throttleFilteredPct??null,brakeFilteredPct:t.packetTilda?.brakeFilteredPct??null};
   live.lap={currentLap:t.lap.count,totalLaps:t.lap.total,bestLapMs:t.lap.bestMs,lastLapMs:t.lap.lastMs,currentLapMs:t.packetC?.currentLapMs??t.lap.currentMs};
@@ -182,10 +215,10 @@ function readBody(req){return new Promise(resolve=>{let s='';req.on('data',d=>s+
 const server=http.createServer(async(req,res)=>{
   if(req.method==='OPTIONS')return sendJson(res,200,{ok:true});
   const url=new URL(req.url,'http://localhost');
-  if(url.pathname==='/api/health')return sendJson(res,200,{ok:true,status:'ONLINE',version:VERSION,port:PORT,packets:packetCount,lastPacketAgeMs:lastPacketAt?Date.now()-lastPacketAt:null,lastPacketSize,connectedToPs5:!!(lastPacketAt&&Date.now()-lastPacketAt<5000),decodeErrors,udp:{ps5Ip:PS5_IP,listeningPort:UDP_PORT,heartbeatPort:HEARTBEAT_PORT,requestedPacket:REQUESTED_PACKET,detectedPacket:live.packet.version}});
-  if(url.pathname==='/api/live') { live.packet.connected=!!(lastPacketAt&&Date.now()-lastPacketAt<5000); live.packet.ageMs=lastPacketAt?Date.now()-lastPacketAt:null; live.legacy.connected=live.packet.connected; return sendJson(res,200,{live,session:responseSession()}); }
+  if(url.pathname==='/api/health')return sendJson(res,200,{ok:true,status:'ONLINE',version:VERSION,port:PORT,packets:packetCount,lastPacketAgeMs:lastPacketAt?Date.now()-lastPacketAt:null,lastPacketSize,connectedToPs5:packetIsFresh(),decodeErrors,udp:{ps5Ip:PS5_IP,listeningPort:UDP_PORT,heartbeatPort:HEARTBEAT_PORT,requestedPacket:REQUESTED_PACKET,activePacket:ACTIVE_PACKET,detectedPacket:live.packet.version,fallbackOrder:packetSequence(REQUESTED_PACKET)}});
+  if(url.pathname==='/api/live') { live.packet.connected=packetIsFresh(); live.packet.ageMs=lastPacketAt?Date.now()-lastPacketAt:null; live.packet.requestedVersion=REQUESTED_PACKET; live.packet.activeVersion=ACTIVE_PACKET; live.legacy.connected=live.packet.connected; return sendJson(res,200,{live,session:responseSession()}); }
   if(url.pathname==='/api/fields')return sendJson(res,200,{version:VERSION,packetVersions:{A:296,B:316,'~':344,C:368},telemetry:live.telemetry});
-  if(url.pathname==='/api/config'&&req.method==='POST'){const body=await readBody(req);if(typeof body.ps5Ip==='string'&&body.ps5Ip.trim())PS5_IP=body.ps5Ip.trim();if(['A','B','~','C'].includes(body.packetVersion))REQUESTED_PACKET=body.packetVersion;live.packet.requestedVersion=REQUESTED_PACKET;saveState();return sendJson(res,200,{ok:true,ps5Ip:PS5_IP,packetVersion:REQUESTED_PACKET});}
+  if(url.pathname==='/api/config'&&req.method==='POST'){const body=await readBody(req);if(typeof body.ps5Ip==='string'&&body.ps5Ip.trim())PS5_IP=body.ps5Ip.trim();if(['A','B','~','C'].includes(body.packetVersion)){REQUESTED_PACKET=body.packetVersion;fallbackIndex=0;lastPacketAt=0;selectActivePacket(REQUESTED_PACKET,'preferência alterada');}live.packet.requestedVersion=REQUESTED_PACKET;live.packet.activeVersion=ACTIVE_PACKET;saveState();return sendJson(res,200,{ok:true,ps5Ip:PS5_IP,packetVersion:REQUESTED_PACKET,activePacket:ACTIVE_PACKET});}
   if(url.pathname==='/api/session/start'&&req.method==='POST'){if(currentSession.laps.length||currentSession.maxSpeedKmh>0){sessions.unshift({...currentSession,finishedAt:nowIso()});sessions=sessions.slice(0,100);}currentSession=newSession();fuelConsumedSession=0;previousFuel=null;lastSeenLastLapMs=0;saveState();return sendJson(res,200,{ok:true,session:responseSession()});}
   if(url.pathname==='/api/session/history')return sendJson(res,200,{sessions});
   return sendJson(res,200,{ok:true,name:'GT7 Telemetria V4 Full',version:VERSION,endpoints:['/api/health','/api/live','/api/fields','/api/config','/api/session/start','/api/session/history']});
@@ -195,8 +228,15 @@ server.listen(PORT,'0.0.0.0',()=>console.log(`GT7 Full Telemetry ${VERSION} em h
 const udp=dgram.createSocket({type:'udp4',reuseAddr:true});
 udp.on('message',(msg)=>{packetCount++;lastPacketAt=Date.now();lastPacketSize=msg.length;try{const t=decode(msg);if(t)applyDecoded(t);else decodeErrors++;}catch(err){decodeErrors++;console.error('Decode:',err.message);}});
 udp.on('error',err=>console.error('UDP:',err.message));
-udp.bind(UDP_PORT,'0.0.0.0',()=>console.log(`UDP GT7 em 0.0.0.0:${UDP_PORT}, solicitando pacote ${REQUESTED_PACKET}`));
-setInterval(()=>{udp.send(Buffer.from(REQUESTED_PACKET),HEARTBEAT_PORT,PS5_IP,()=>{});},1000);
+udp.bind(UDP_PORT,'0.0.0.0',()=>console.log(`UDP GT7 em 0.0.0.0:${UDP_PORT}, preferência ${REQUESTED_PACKET}, ativo ${ACTIVE_PACKET}`));
+setInterval(()=>{
+  if (!packetIsFresh() && Date.now() - lastPacketSwitchAt >= FALLBACK_STEP_MS) {
+    const sequence = packetSequence(REQUESTED_PACKET);
+    fallbackIndex = (fallbackIndex + 1) % sequence.length;
+    selectActivePacket(sequence[fallbackIndex], 'fallback sem pacotes');
+  }
+  udp.send(Buffer.from(ACTIVE_PACKET),HEARTBEAT_PORT,PS5_IP,()=>{});
+},1000);
 setInterval(saveState,30000);
 process.on('SIGINT',()=>{saveState();process.exit(0);});
 process.on('SIGTERM',()=>{saveState();process.exit(0);});
