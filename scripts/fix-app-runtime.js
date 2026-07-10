@@ -28,9 +28,20 @@ for (const id of requiredPages) {
   if (!html.includes(`data-p="${id}"`)) throw new Error(`Botão de navegação ausente: ${id}`);
 }
 
-const externalTelemetry = path.join(path.dirname(target), 'telemetry-bc.js');
-if (!fs.existsSync(externalTelemetry)) throw new Error('Arquivo telemetry-bc.js ausente');
-new Function(fs.readFileSync(externalTelemetry, 'utf8'));
+const externalFiles = [
+  ['telemetry-bc.js', 'src="telemetry-bc.js"'],
+  ['telemetry-bc.css', 'href="telemetry-bc.css"'],
+  ['identity-track.js', 'src="identity-track.js"'],
+  ['identity-track.css', 'href="identity-track.css"']
+];
+for (const [fileName, marker] of externalFiles) {
+  if (!html.includes(marker)) throw new Error(`Referência ausente no HTML: ${marker}`);
+  const filePath = path.join(path.dirname(target), fileName);
+  if (!fs.existsSync(filePath)) throw new Error(`Arquivo obrigatório ausente: ${fileName}`);
+  if (fileName.endsWith('.js')) new Function(fs.readFileSync(filePath, 'utf8'));
+}
+
+if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, navegação e Telemetria externa validados:', target);
+console.log('Runtime, navegação, identidade e fullscreen validados:', target);
