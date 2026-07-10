@@ -42,7 +42,7 @@ jobs:
       - name: Estabilizar ciclos da interface
         run: node scripts/stabilize-ui-runtime.js
 
-      - name: Organizar primeira pagina vertical e combustivel
+      - name: Aplicar combustível e grid inferior
         run: node scripts/apply-dashboard-vertical-fuel.js
 
       - name: Corrigir runtime e navegacao
@@ -66,5 +66,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-Vertical-Fuel-debug-apk
+          name: GT7-Telemetria-V4-Duas-Colunas-Fuel-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
