@@ -36,6 +36,9 @@ jobs:
       - name: Aplicar pagina Telemetria completa
         run: node scripts/apply-full-telemetry.js
 
+      - name: Corrigir runtime e navegacao
+        run: node scripts/fix-app-runtime.js
+
       - name: Add Android
         run: npx cap add android
 
