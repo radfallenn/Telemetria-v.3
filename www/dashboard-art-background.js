@@ -2,8 +2,12 @@
   'use strict';
 
   function applyCockpitBackground() {
-    const encoded = window.__cockpitBgTiny;
+    const chunks = Array.isArray(window.__cockpitBgChunks)
+      ? window.__cockpitBgChunks.filter(Boolean)
+      : [];
+    const encoded = chunks.join('');
     if (!encoded) return;
+
     document.documentElement.style.setProperty(
       '--cockpit-art',
       `url("data:image/webp;base64,${encoded}")`
