@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.studiorad.telemetriav3',
-  appName: 'Telemetria v3',
+  appId: 'com.rad.gt7telemetriav4',
+  appName: 'GT7 Telemetria V4',
   webDir: 'www',
   server: {
     androidScheme: 'http',

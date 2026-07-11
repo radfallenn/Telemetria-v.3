@@ -1,44 +1,82 @@
-name: Build APK
+name: Build APK Telemetria 4.0
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - telemetria-4.0
 
 jobs:
   build-apk:
+    name: Gerar APK Debug
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Install
         run: npm install --no-audit --no-fund
-      - name: Patch app
-        run: node scripts/patch-index.js
-      - name: Patch advanced widgets
-        run: node scripts/patch-advanced-widgets.js
+
+      - name: Aplicar autonomia pela ultima volta na Bridge
+        run: node scripts/patch-bridge-last-lap-autonomy.js
+
+      - name: Validar Bridge
+        run: node --check bridge/server.cjs
+
+      - name: Patch Telemetria Port 8788
+        run: node scripts/patch-port-8788.js
+
+      - name: Aplicar pagina Telemetria completa
+        run: node scripts/apply-full-telemetry.js
+
+      - name: Aplicar carro pista fullscreen e navegacao segura
+        run: node scripts/apply-identity-fullscreen.js
+
+      - name: Estabilizar ciclos da interface
+        run: node scripts/stabilize-ui-runtime.js
+
+      - name: Aplicar dashboard e seletor de fundo
+        run: node scripts/apply-dashboard-vertical-fuel.js
+
+      - name: Corrigir status e conexão PS5
+        run: node scripts/fix-connection-runtime.js
+
+      - name: Validar interface final e runtime
+        run: node scripts/fix-app-runtime.js
+
+      - name: Validar imagem de fundo personalizada
+        run: node scripts/validate-custom-background.js
+
       - name: Add Android
         run: npx cap add android
-      - name: Sync
+
+      - name: Sync Capacitor
         run: npx cap sync android
-      - name: Patch Android background
-        run: node scripts/patch-android-background.js
+
+      - name: Patch Android V4
+        run: node scripts/patch-android-v4.js
+
       - name: Gradle permission
         run: chmod +x android/gradlew
+
       - name: Build Debug APK
         run: cd android && ./gradlew assembleDebug --stacktrace
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v3-debug-apk
+          name: GT7-Telemetria-V4-Combustivel-Tempo-RPM-Arco-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
