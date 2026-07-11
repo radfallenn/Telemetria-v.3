@@ -53,15 +53,21 @@ if (identityCode.includes('    enableFullscreen();')) {
   throw new Error('Fullscreen web ainda consome o primeiro toque');
 }
 const dashboardCss = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.css'), 'utf8');
-if (!dashboardCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))')) {
-  throw new Error('Cards inferiores não estão em duas colunas');
+for (const marker of [
+  'grid-template-columns:repeat(2,minmax(0,1fr))',
+  '#identityCarCard,#identityTrackCard,#fuelEstimateMeta{display:none!important}',
+  'fuelWarningBlink',
+  'touch-action:pan-y!important',
+  'body:before{pointer-events:none!important}'
+]) {
+  if (!dashboardCss.includes(marker)) throw new Error(`CSS do dashboard incompleto: ${marker}`);
 }
 const fuelCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.js'), 'utf8');
-for (const marker of ['live.fuel.lapsRemaining', 'remainingFuelLaps', 'lastLapConsumedLiters', 'Última volta:', '-- VOLTAS']) {
-  if (!fuelCode.includes(marker)) throw new Error(`Autonomia da última volta incompleta: ${marker}`);
+for (const marker of ['fuelPercent', "active <= 3", "classList.toggle('fuelLow'", 'removeUnwantedDashboardCards', "`${Math.round(fuelPercent)}%`"]) {
+  if (!fuelCode.includes(marker)) throw new Error(`Combustível percentual incompleto: ${marker}`);
 }
-for (const forbidden of ['updateLocalFuelModel', 'robustAverage', 'consumptionPerLapLiters', 'fuelPerLapLiters', 'averagesByCar']) {
-  if (fuelCode.includes(forbidden)) throw new Error(`Média indevida ainda presente: ${forbidden}`);
+for (const forbidden of ['lapsRemaining =', 'lastLapConsumedLiters =', 'formatLaps(', 'Complete uma volta válida']) {
+  if (fuelCode.includes(forbidden)) throw new Error(`Autonomia ainda visível no card: ${forbidden}`);
 }
 for (const marker of ["ok:Boolean(g(L,'packet.connected'", "('OK · '+f.ver)", "'PS5 WAIT'", "'BRIDGE OFF'"]) {
   if (!html.includes(marker)) throw new Error(`Correção de conexão ausente: ${marker}`);
@@ -73,4 +79,4 @@ if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com úl
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, conexão, gráfico e autonomia pela última volta validados:', target);
+console.log('Runtime, scroll livre, combustível percentual e alerta baixo validados:', target);
