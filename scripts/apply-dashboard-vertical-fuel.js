@@ -10,11 +10,20 @@ if (!html.includes('href="dashboard-vertical-fuel.css"')) {
 if (!html.includes('href="rpm-graph.css"')) {
   html = html.replace('</head>', '<link rel="stylesheet" href="rpm-graph.css"></head>');
 }
+if (!html.includes('href="dashboard-art-background.css"')) {
+  html = html.replace('</head>', '<link rel="stylesheet" href="dashboard-art-background.css"></head>');
+}
 if (!html.includes('src="dashboard-vertical-fuel.js"')) {
   html = html.replace('</body>', '<script src="dashboard-vertical-fuel.js"></script></body>');
 }
 if (!html.includes('src="rpm-graph.js"')) {
   html = html.replace('</body>', '<script src="rpm-graph.js"></script></body>');
+}
+if (!html.includes('src="cockpit-bg-tiny.js"')) {
+  html = html.replace('</body>', '<script src="cockpit-bg-tiny.js"></script></body>');
+}
+if (!html.includes('src="dashboard-art-background.js"')) {
+  html = html.replace('</body>', '<script src="dashboard-art-background.js"></script></body>');
 }
 
 html = html.replace(
@@ -69,8 +78,11 @@ const required = [
   'id="tyreTempRR"',
   'href="dashboard-vertical-fuel.css"',
   'href="rpm-graph.css"',
+  'href="dashboard-art-background.css"',
   'src="dashboard-vertical-fuel.js"',
-  'src="rpm-graph.js"'
+  'src="rpm-graph.js"',
+  'src="cockpit-bg-tiny.js"',
+  'src="dashboard-art-background.js"'
 ];
 for (const marker of required) {
   if (!html.includes(marker)) throw new Error(`Dashboard estático incompleto: ${marker}`);
@@ -78,4 +90,4 @@ for (const marker of required) {
 if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível');
 
 fs.writeFileSync(target, html);
-console.log('Dashboard estático aplicado com gráfico de RPM');
+console.log('Dashboard estático aplicado com arte de fundo e funções preservadas');
