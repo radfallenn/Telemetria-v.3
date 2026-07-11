@@ -58,13 +58,31 @@ for (const marker of [
   '#identityCarCard,#identityTrackCard,#fuelEstimateMeta{display:none!important}',
   'fuelWarningBlink',
   'touch-action:pan-y!important',
-  'body:before{pointer-events:none!important}'
+  'body:before{pointer-events:none!important}',
+  '.hero.heroSeparated',
+  '.packMetricsGrid',
+  '.speedGaugePanel',
+  '.copyTimeCard',
+  '.tyreTempsPanel',
+  '.tyreTempBar'
 ]) {
   if (!dashboardCss.includes(marker)) throw new Error(`CSS do dashboard incompleto: ${marker}`);
 }
 const fuelCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.js'), 'utf8');
-for (const marker of ['fuelPercent', "active <= 3", "classList.toggle('fuelLow'", 'removeUnwantedDashboardCards', "`${Math.round(fuelPercent)}%`"]) {
-  if (!fuelCode.includes(marker)) throw new Error(`Combustível percentual incompleto: ${marker}`);
+for (const marker of [
+  'fuelPercent',
+  'active <= 3',
+  "classList.toggle('fuelLow'",
+  'removeUnwantedDashboardCards',
+  'prepareHeroCards',
+  'preparePackCards',
+  'copyMetric',
+  'enableTimeCopy',
+  'ensureTyrePanel',
+  'renderTyres',
+  "`${Math.round(fuelPercent)}%`"
+]) {
+  if (!fuelCode.includes(marker)) throw new Error(`Dashboard interativo incompleto: ${marker}`);
 }
 for (const forbidden of ['lapsRemaining =', 'lastLapConsumedLiters =', 'formatLaps(', 'Complete uma volta válida']) {
   if (fuelCode.includes(forbidden)) throw new Error(`Autonomia ainda visível no card: ${forbidden}`);
@@ -79,4 +97,4 @@ if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com úl
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, scroll livre, combustível percentual e alerta baixo validados:', target);
+console.log('Runtime, cards separados, cópia de tempos, pneus, scroll e combustível validados:', target);
