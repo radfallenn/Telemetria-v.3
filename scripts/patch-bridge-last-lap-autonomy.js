@@ -83,6 +83,7 @@ const replacement = `function updateSession(t) {
     currentSession.validLaps=currentSession.laps.length;
     currentSession.totalCompletedLapMs=currentSession.laps.reduce((a,x)=>a+x.ms,0);
     currentSession.averageLapMs=Math.round(currentSession.totalCompletedLapMs/currentSession.laps.length);
+    saveState();
   }
 
   if(Number.isFinite(fuel)&&Number.isFinite(lastLapFuelConsumed)&&lastLapFuelConsumed>0.001){
@@ -90,7 +91,6 @@ const replacement = `function updateSession(t) {
   }
   currentSession.lastLapFuelConsumedLiters=Number.isFinite(lastLapFuelConsumed)?round(lastLapFuelConsumed,3):null;
   currentSession.fuelLapsRemaining=Number.isFinite(fuelLapsRemaining)?fuelLapsRemaining:null;
-  saveState();
 }
 
 function applyDecoded`;
