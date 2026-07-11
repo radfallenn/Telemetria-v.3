@@ -48,13 +48,13 @@ jobs:
       - name: Estabilizar ciclos da interface
         run: node scripts/stabilize-ui-runtime.js
 
-      - name: Aplicar arte completa e dashboard funcional
+      - name: Substituir DASH pela interface funcional da arte
         run: node scripts/apply-dashboard-vertical-fuel.js
 
       - name: Corrigir status e conexão PS5
         run: node scripts/fix-connection-runtime.js
 
-      - name: Corrigir runtime e navegacao
+      - name: Validar interface final e runtime
         run: node scripts/fix-app-runtime.js
 
       - name: Add Android
@@ -75,5 +75,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-Arte-Fundo-Funcional-debug-apk
+          name: GT7-Telemetria-V4-Interface-Arte-Funcional-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
