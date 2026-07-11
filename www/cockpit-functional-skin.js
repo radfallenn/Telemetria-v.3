@@ -37,9 +37,36 @@
       target?.classList.add('skinCopied');
       setTimeout(() => target?.classList.remove('skinCopied'), 720);
     };
+
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).then(flash).catch(() => {});
+      return;
     }
+
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    flash();
+  }
+
+  function setRpmArc(percent, rpm) {
+    const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+    const fill = $('skinRpmArcFill');
+    const glow = $('skinRpmArcGlow');
+    const arc = $('skinRpmArc');
+
+    if (fill) fill.style.strokeDasharray = `${safePercent} ${100 - safePercent}`;
+    if (glow) {
+      glow.style.strokeDasharray = `${Math.min(8, safePercent)} 100`;
+      glow.style.strokeDashoffset = String(-Math.max(0, safePercent - 8));
+    }
+    if (arc) arc.classList.toggle('nearLimit', safePercent >= 91);
+    setText('skinRpmArcValue', `${Math.round(rpm)} RPM`);
   }
 
   function buildSkin() {
@@ -57,19 +84,30 @@
     skin.innerHTML = `
       <div id="skinConnection" class="skinCenter skinConnection"><span>--<small>--ms</small></span></div>
       <div id="skinBridge" class="skinCenter skinBridge">--</div>
+
+      <div id="skinRpmArc" class="skinRpmArc" aria-label="Conta-giros">
+        <svg viewBox="0 0 706 400" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="skinRpmGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#23ef52"></stop>
+              <stop offset="56%" stop-color="#dfff24"></stop>
+              <stop offset="78%" stop-color="#ff9b1f"></stop>
+              <stop offset="100%" stop-color="#ff3048"></stop>
+            </linearGradient>
+          </defs>
+          <path class="skinRpmArcTrack" pathLength="100" d="M82 336 A271 271 0 0 1 624 336"></path>
+          <path id="skinRpmArcFill" class="skinRpmArcFill" pathLength="100" d="M82 336 A271 271 0 0 1 624 336"></path>
+          <path id="skinRpmArcGlow" class="skinRpmArcGlow" pathLength="100" d="M82 336 A271 271 0 0 1 624 336"></path>
+          <g class="skinRpmTicks">
+            <text x="84" y="365">0</text><text x="155" y="220">2</text><text x="260" y="118">4</text>
+            <text x="353" y="84">6</text><text x="470" y="118">8</text><text x="603" y="365">10</text>
+          </g>
+        </svg>
+        <div id="skinRpmArcValue" class="skinRpmArcValue">0 RPM</div>
+      </div>
+
       <div id="skinSpeed" class="skinCenter skinSpeed">0</div>
       <div id="skinGear" class="skinCenter skinGear">N</div>
-
-      <div class="skinMetricBox skinLeft skinRow1">
-        <span class="skinLabel">RPM</span>
-        <b id="skinRpm" class="skinValue">0</b>
-        <div class="skinBar"><i id="skinRpmBar" class="skinRpmFill"></i></div>
-      </div>
-
-      <div id="skinTotalBox" class="skinMetricBox skinRight skinRow1 clickable">
-        <span class="skinLabel">TEMPO TOTAL</span>
-        <b id="skinTotal" class="skinValue">00:00.000</b>
-      </div>
 
       <div class="skinMetricBox skinLeft skinRow2">
         <span class="skinLabel">ACELERADOR</span>
@@ -89,10 +127,10 @@
         <small class="skinSmallText">Toque para copiar</small>
       </div>
 
-      <div class="skinMetricBox skinRight skinRow3">
-        <span class="skinLabel">COMBUSTÍVEL</span>
-        <b id="skinFuel" class="skinValue skinCyan">--%</b>
-        <div class="skinBar"><i id="skinFuelBar" class="skinFuelFill"></i></div>
+      <div id="skinTotalBox" class="skinMetricBox skinRight skinRow3 clickable">
+        <span class="skinLabel">TEMPO TOTAL</span>
+        <b id="skinTotal" class="skinValue">00:00.000</b>
+        <small class="skinSmallText">Toque para copiar</small>
       </div>
 
       <div class="skinMetricBox skinLeft skinRow4">
@@ -110,6 +148,12 @@
         <span class="skinLabel">UDM NOTA</span>
         <b id="skinUdm" class="skinValue skinCyan">--</b>
         <small id="skinUdmTxt" class="skinSmallText">Aguardando voltas válidas.</small>
+      </div>
+
+      <div id="skinFuelBox" class="skinMetricBox skinFuelBox">
+        <span class="skinLabel">COMBUSTÍVEL</span>
+        <b id="skinFuel" class="skinValue skinCyan">--%</b>
+        <div class="skinBar"><i id="skinFuelBar" class="skinFuelFill"></i></div>
       </div>
 
       <div class="skinTyreTitle">TEMPERATURA DOS PNEUS</div>
@@ -154,10 +198,13 @@
       connection.innerHTML = `<span>${readText('st', '--')}<small>${readText('lat', '--ms')}</small></span>`;
     }
 
+    const rpm = readNumber('rpmTop');
+    const rpmPercent = widthOf('rpmBarFill', 'rpmTop');
+
     setText('skinBridge', readText('bridge'));
     setText('skinSpeed', Math.round(readNumber('speed')));
     setText('skinGear', readText('gear', 'N'));
-    setText('skinRpm', Math.round(readNumber('rpmTop')));
+    setRpmArc(rpmPercent, rpm);
     setText('skinTotal', readText('total', '00:00.000'));
     setText('skinThrottle', readText('thr', '0%'));
     setText('skinBrake', readText('brk', '0%'));
@@ -172,7 +219,6 @@
     setText('skinTyreRL', readText('tyreTempRL'));
     setText('skinTyreRR', readText('tyreTempRR'));
 
-    setWidth('skinRpmBar', widthOf('rpmBarFill', 'rpmTop'));
     setWidth('skinThrBar', widthOf('thrBar', 'thr'));
     setWidth('skinBrkBar', widthOf('brkBar', 'brk'));
     setWidth('skinFuelBar', readNumber('fuelDash'));
