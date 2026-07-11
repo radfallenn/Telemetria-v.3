@@ -1,10 +1,10 @@
 {
   "name": "gt7-telemetria-v4-cockpit-modular-clean",
-  "version": "4.1.2",
+  "version": "4.1.3",
   "private": true,
   "scripts": {
-    "start": "node scripts/patch-bridge-fuel-autonomy.js && NODE_ENV=production node bridge/server.cjs",
-    "bridge": "node scripts/patch-bridge-fuel-autonomy.js && NODE_ENV=production node bridge/server.cjs",
+    "start": "NODE_ENV=production node bridge/server.cjs",
+    "bridge": "NODE_ENV=production node bridge/server.cjs",
     "clean:v4": "bash scripts/reset-telemetria-v4-clean.sh",
     "sync": "npx cap sync android",
     "apk:debug": "npx cap add android || true && npx cap sync android && node scripts/patch-android-v4.js && cd android && ./gradlew assembleDebug"
