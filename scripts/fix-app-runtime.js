@@ -28,22 +28,14 @@ for (const id of requiredPages) {
   if (!html.includes(`data-p="${id}"`)) throw new Error(`Botão de navegação ausente: ${id}`);
 }
 
-const staticDashboardMarkers = [
-  'class="hero heroSeparated"',
-  'class="box card heroMetricCard"',
-  'id="rpmMetricCard"',
-  'id="rpmBarFill"',
-  'id="totalTimeCard"',
-  'class="card speedGaugePanel"',
-  'id="bestTimeCard"',
-  'id="tyreTempsPanel"',
-  'id="tyreTempFL"',
-  'id="tyreTempFR"',
-  'id="tyreTempRL"',
-  'id="tyreTempRR"'
+const sourceMarkers = [
+  'id="speed"', 'id="gear"', 'id="rpmTop"', 'id="total"',
+  'id="thr"', 'id="brk"', 'id="best"', 'id="fuelDash"',
+  'id="valid"', 'id="max"', 'id="udm"',
+  'id="tyreTempFL"', 'id="tyreTempFR"', 'id="tyreTempRL"', 'id="tyreTempRR"'
 ];
-for (const marker of staticDashboardMarkers) {
-  if (!html.includes(marker)) throw new Error(`Layout estático ausente no APK: ${marker}`);
+for (const marker of sourceMarkers) {
+  if (!html.includes(marker)) throw new Error(`Fonte de telemetria ausente: ${marker}`);
 }
 
 const externalFiles = [
@@ -55,7 +47,14 @@ const externalFiles = [
   ['dashboard-vertical-fuel.js', 'src="dashboard-vertical-fuel.js"'],
   ['dashboard-vertical-fuel.css', 'href="dashboard-vertical-fuel.css"'],
   ['rpm-graph.js', 'src="rpm-graph.js"'],
-  ['rpm-graph.css', 'href="rpm-graph.css"']
+  ['rpm-graph.css', 'href="rpm-graph.css"'],
+  ['dashboard-art-background.js', 'src="dashboard-art-background.js"'],
+  ['dashboard-art-background.css', 'href="dashboard-art-background.css"'],
+  ['cockpit-bg-1.js', 'src="cockpit-bg-1.js"'],
+  ['cockpit-bg-2.js', 'src="cockpit-bg-2.js"'],
+  ['cockpit-bg-3.js', 'src="cockpit-bg-3.js"'],
+  ['cockpit-functional-skin.js', 'src="cockpit-functional-skin.js"'],
+  ['cockpit-functional-skin.css', 'href="cockpit-functional-skin.css"']
 ];
 for (const [fileName, marker] of externalFiles) {
   if (!html.includes(marker)) throw new Error(`Referência ausente no HTML: ${marker}`);
@@ -68,62 +67,51 @@ const telemetryCode = fs.readFileSync(path.join(path.dirname(target), 'telemetry
 if (!telemetryCode.includes("page.classList.contains('on')")) {
   throw new Error('Telemetria ainda renderiza quando a janela está fechada');
 }
+
 const identityCode = fs.readFileSync(path.join(path.dirname(target), 'identity-track.js'), 'utf8');
 if (identityCode.includes('    enableFullscreen();')) {
   throw new Error('Fullscreen web ainda consome o primeiro toque');
 }
-const dashboardCss = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.css'), 'utf8');
-for (const marker of [
-  'grid-template-columns:repeat(2,minmax(0,1fr))',
-  '#identityCarCard,#identityTrackCard,#fuelEstimateMeta{display:none!important}',
-  'fuelWarningBlink',
-  'touch-action:pan-y!important',
-  'body:before{pointer-events:none!important}',
-  '.hero.heroSeparated',
-  '.packMetricsGrid',
-  '.speedGaugePanel',
-  '.copyTimeCard',
-  '.tyreTempsPanel',
-  '.tyreTempBar'
-]) {
-  if (!dashboardCss.includes(marker)) throw new Error(`CSS do dashboard incompleto: ${marker}`);
-}
+
 const fuelCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.js'), 'utf8');
-for (const marker of [
-  'fuelPercent',
-  'active <= 3',
-  "classList.toggle('fuelLow'",
-  'removeUnwantedDashboardCards',
-  'prepareHeroCards',
-  'preparePackCards',
-  'copyMetric',
-  'enableTimeCopy',
-  'ensureTyrePanel',
-  'renderTyres',
-  "`${Math.round(fuelPercent)}%`"
-]) {
-  if (!fuelCode.includes(marker)) throw new Error(`Dashboard interativo incompleto: ${marker}`);
+for (const marker of ['fuelPercent', 'active <= 3', "classList.toggle('fuelLow'", 'renderTyres']) {
+  if (!fuelCode.includes(marker)) throw new Error(`Telemetria auxiliar incompleta: ${marker}`);
 }
+
 const rpmCode = fs.readFileSync(path.join(path.dirname(target), 'rpm-graph.js'), 'utf8');
 for (const marker of ['rpmBarFill', 'maxAlertRpm', 'style.width']) {
   if (!rpmCode.includes(marker)) throw new Error(`Gráfico de RPM incompleto: ${marker}`);
 }
-const rpmCss = fs.readFileSync(path.join(path.dirname(target), 'rpm-graph.css'), 'utf8');
-if (!rpmCss.includes('.rpmGraph') || !rpmCss.includes('linear-gradient')) throw new Error('CSS do gráfico de RPM incompleto');
-for (const forbidden of ['rgbSpin', 'conic-gradient', 'rpmShiftFlash']) {
-  if (rpmCss.includes(forbidden) || dashboardCss.includes(forbidden)) throw new Error(`Efeito não solicitado encontrado: ${forbidden}`);
+
+const backgroundCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-art-background.js'), 'utf8');
+for (const marker of ['__cockpitBgChunks', "chunks.join('')", '--cockpit-art']) {
+  if (!backgroundCode.includes(marker)) throw new Error(`Carregador da arte incompleto: ${marker}`);
 }
-for (const forbidden of ['lapsRemaining =', 'lastLapConsumedLiters =', 'formatLaps(', 'Complete uma volta válida']) {
-  if (fuelCode.includes(forbidden)) throw new Error(`Autonomia ainda visível no card: ${forbidden}`);
+
+const skinCode = fs.readFileSync(path.join(path.dirname(target), 'cockpit-functional-skin.js'), 'utf8');
+for (const marker of [
+  'dashLegacySources', 'cockpitFunctionalSkin', 'skinSpeed', 'skinGear',
+  'skinRpmBar', 'skinFuelBar', 'skinTyreBarFL', 'setInterval(syncSkin, 160)',
+  "copyValue('total'", "copyValue('best'"
+]) {
+  if (!skinCode.includes(marker)) throw new Error(`Interface funcional incompleta: ${marker}`);
 }
+
+const skinCss = fs.readFileSync(path.join(path.dirname(target), 'cockpit-functional-skin.css'), 'utf8');
+for (const marker of [
+  '#dashLegacySources{display:none!important}',
+  'background-image:var(--cockpit-art)',
+  '.skinSpeed', '.skinGear', '.skinRpmTrack', '.skinFuelTrack', '.skinTyreTrack'
+]) {
+  if (!skinCss.includes(marker)) throw new Error(`Posicionamento sobre a arte incompleto: ${marker}`);
+}
+
 for (const marker of ["ok:Boolean(g(L,'packet.connected'", "('OK · '+f.ver)", "'PS5 WAIT'", "'BRIDGE OFF'"]) {
   if (!html.includes(marker)) throw new Error(`Correção de conexão ausente: ${marker}`);
 }
-if (!html.includes('class="grid dashGrid"')) throw new Error('Grid inferior do dashboard ausente');
-if (!html.includes('id="fuelDash"') || !html.includes('id="fuelMiniMarker"')) throw new Error('Célula de combustível incompleta');
-if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível no dashboard');
-if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com última volta oculta ausente');
+
+if (html.includes('src="cockpit-bg-tiny.js"')) throw new Error('Fundo reduzido antigo ainda carregado');
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime e gráfico de RPM validados sem efeitos extras:', target);
+console.log('Interface da imagem, fontes ocultas e dados reais validados no APK:', target);
