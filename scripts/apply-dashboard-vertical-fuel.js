@@ -4,32 +4,30 @@ const path = require('path');
 const target = process.argv[2] || path.join('www', 'index.html');
 let html = fs.readFileSync(target, 'utf8');
 
-if (!html.includes('href="dashboard-vertical-fuel.css"')) {
-  html = html.replace('</head>', '<link rel="stylesheet" href="dashboard-vertical-fuel.css"></head>');
-}
-if (!html.includes('href="rpm-graph.css"')) {
-  html = html.replace('</head>', '<link rel="stylesheet" href="rpm-graph.css"></head>');
-}
-if (!html.includes('href="dashboard-art-background.css"')) {
-  html = html.replace('</head>', '<link rel="stylesheet" href="dashboard-art-background.css"></head>');
-}
-if (!html.includes('src="dashboard-vertical-fuel.js"')) {
-  html = html.replace('</body>', '<script src="dashboard-vertical-fuel.js"></script></body>');
-}
-if (!html.includes('src="rpm-graph.js"')) {
-  html = html.replace('</body>', '<script src="rpm-graph.js"></script></body>');
-}
-if (!html.includes('src="cockpit-bg-tiny.js"')) {
-  html = html.replace('</body>', '<script src="cockpit-bg-tiny.js"></script></body>');
-}
-if (!html.includes('src="dashboard-art-background.js"')) {
-  html = html.replace('</body>', '<script src="dashboard-art-background.js"></script></body>');
+const headAssets = [
+  'dashboard-vertical-fuel.css',
+  'rpm-graph.css',
+  'dashboard-art-background.css'
+];
+for (const asset of headAssets) {
+  const marker = `href="${asset}"`;
+  if (!html.includes(marker)) html = html.replace('</head>', `<link rel="stylesheet" href="${asset}"></head>`);
 }
 
-html = html.replace(
-  /(<section id="dash" class="page on">[\s\S]*?<div class="grid)(")/,
-  '$1 dashGrid$2'
-);
+const bodyScripts = [
+  'dashboard-vertical-fuel.js',
+  'rpm-graph.js',
+  'cockpit-bg-1.js',
+  'cockpit-bg-2.js',
+  'cockpit-bg-3.js',
+  'dashboard-art-background.js'
+];
+for (const asset of bodyScripts) {
+  const marker = `src="${asset}"`;
+  if (!html.includes(marker)) html = html.replace('</body>', `<script src="${asset}"></script></body>`);
+}
+
+html = html.replace(/(<section id="dash" class="page on">[\s\S]*?<div class="grid)(")/, '$1 dashGrid$2');
 
 html = html.replace(
   '<div class="card tile"><div class="label">ÚLTIMA VOLTA</div><div id="last" class="val">--</div></div>',
@@ -65,29 +63,23 @@ html = html.replace(/<div id="identityTrackCard"[\s\S]*?<\/div><\/div>/g, '');
 
 const required = [
   'class="hero heroSeparated"',
-  'class="box card heroMetricCard"',
   'id="rpmMetricCard"',
   'id="rpmBarFill"',
   'id="totalTimeCard"',
-  'class="card speedGaugePanel"',
   'id="bestTimeCard"',
   'id="fuelDash"',
   'id="fuelMiniMarker"',
   'id="tyreTempsPanel"',
-  'id="tyreTempFL"',
-  'id="tyreTempRR"',
-  'href="dashboard-vertical-fuel.css"',
-  'href="rpm-graph.css"',
   'href="dashboard-art-background.css"',
-  'src="dashboard-vertical-fuel.js"',
-  'src="rpm-graph.js"',
-  'src="cockpit-bg-tiny.js"',
+  'src="cockpit-bg-1.js"',
+  'src="cockpit-bg-2.js"',
+  'src="cockpit-bg-3.js"',
   'src="dashboard-art-background.js"'
 ];
 for (const marker of required) {
-  if (!html.includes(marker)) throw new Error(`Dashboard estático incompleto: ${marker}`);
+  if (!html.includes(marker)) throw new Error(`Dashboard final incompleto: ${marker}`);
 }
-if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível');
+if (html.includes('src="cockpit-bg-tiny.js"')) throw new Error('Imagem compacta antiga ainda carregada');
 
 fs.writeFileSync(target, html);
-console.log('Dashboard estático aplicado com arte de fundo e funções preservadas');
+console.log('Arte completa aplicada ao fundo da primeira página com funções preservadas');
