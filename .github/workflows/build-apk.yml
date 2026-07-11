@@ -30,10 +30,7 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
-      - name: Aplicar autonomia na Bridge
-        run: node scripts/patch-bridge-fuel-autonomy.js
-
-      - name: Validar Bridge
+      - name: Validar Bridge sem calculo de autonomia
         run: node --check bridge/server.cjs
 
       - name: Patch Telemetria Port 8788
@@ -75,5 +72,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-Autonomia-Corrigida-debug-apk
+          name: GT7-Telemetria-V4-Autonomia-Direta-Jogo-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
