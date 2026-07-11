@@ -8,7 +8,8 @@ const headAssets = [
   'dashboard-vertical-fuel.css',
   'rpm-graph.css',
   'dashboard-art-background.css',
-  'cockpit-functional-skin.css'
+  'cockpit-functional-skin.css',
+  'custom-background.css'
 ];
 for (const asset of headAssets) {
   const marker = `href="${asset}"`;
@@ -22,7 +23,8 @@ const bodyScripts = [
   'cockpit-bg-2.js',
   'cockpit-bg-3.js',
   'dashboard-art-background.js',
-  'cockpit-functional-skin.js'
+  'cockpit-functional-skin.js',
+  'custom-background.js'
 ];
 for (const asset of bodyScripts) {
   const marker = `src="${asset}"`;
@@ -70,11 +72,13 @@ const required = [
   'id="rpmTop"',
   'id="fuelDash"',
   'href="cockpit-functional-skin.css"',
+  'href="custom-background.css"',
   'src="cockpit-bg-1.js"',
   'src="cockpit-bg-2.js"',
   'src="cockpit-bg-3.js"',
   'src="dashboard-art-background.js"',
-  'src="cockpit-functional-skin.js"'
+  'src="cockpit-functional-skin.js"',
+  'src="custom-background.js"'
 ];
 for (const marker of required) {
   if (!html.includes(marker)) throw new Error(`Dashboard funcional incompleto: ${marker}`);
@@ -82,4 +86,4 @@ for (const marker of required) {
 if (html.includes('src="cockpit-bg-tiny.js"')) throw new Error('Imagem compacta antiga ainda carregada');
 
 fs.writeFileSync(target, html);
-console.log('Primeira página substituída pela interface da arte com dados reais sobrepostos');
+console.log('Dashboard funcional aplicado com opção de imagem de fundo personalizada');
