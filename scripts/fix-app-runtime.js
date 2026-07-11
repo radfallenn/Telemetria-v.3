@@ -57,8 +57,11 @@ if (!dashboardCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))')) {
   throw new Error('Cards inferiores não estão em duas colunas');
 }
 const fuelCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-vertical-fuel.js'), 'utf8');
-for (const marker of ['estimateRemainingLaps', 'consumedSessionLiters', 'levelLiters', 'VOLTAS']) {
-  if (!fuelCode.includes(marker)) throw new Error(`Autonomia em voltas incompleta: ${marker}`);
+for (const marker of ['findDirectGameAutonomy', 'remainingFuelLaps', 'fuelAutonomy', 'Valor direto do jogo', '-- VOLTAS']) {
+  if (!fuelCode.includes(marker)) throw new Error(`Leitura direta da autonomia incompleta: ${marker}`);
+}
+for (const forbidden of ['updateLocalFuelModel', 'robustAverage', 'consumedSessionLiters', 'consumptionPerLapLiters', 'fuelPerLapLiters']) {
+  if (fuelCode.includes(forbidden)) throw new Error(`Cálculo de média ainda presente: ${forbidden}`);
 }
 for (const marker of ["ok:Boolean(g(L,'packet.connected'", "('OK · '+f.ver)", "'PS5 WAIT'", "'BRIDGE OFF'"]) {
   if (!html.includes(marker)) throw new Error(`Correção de conexão ausente: ${marker}`);
@@ -70,4 +73,4 @@ if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com úl
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, navegação, conexão, duas colunas, gráfico e autonomia validados:', target);
+console.log('Runtime, navegação, conexão, gráfico e autonomia direta do jogo validados:', target);
