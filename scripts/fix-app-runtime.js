@@ -80,7 +80,7 @@ for (const marker of ['fuelPercent', 'active <= 3', "classList.toggle('fuelLow'"
 
 const rpmCode = fs.readFileSync(path.join(path.dirname(target), 'rpm-graph.js'), 'utf8');
 for (const marker of ['rpmBarFill', 'maxAlertRpm', 'style.width']) {
-  if (!rpmCode.includes(marker)) throw new Error(`Gráfico de RPM incompleto: ${marker}`);
+  if (!rpmCode.includes(marker)) throw new Error(`Fonte do RPM incompleta: ${marker}`);
 }
 
 const backgroundCode = fs.readFileSync(path.join(path.dirname(target), 'dashboard-art-background.js'), 'utf8');
@@ -91,17 +91,25 @@ for (const marker of ['__cockpitBgChunks', "chunks.join('')", '--cockpit-art']) 
 const skinCode = fs.readFileSync(path.join(path.dirname(target), 'cockpit-functional-skin.js'), 'utf8');
 for (const marker of [
   'dashLegacySources', 'cockpitFunctionalSkin', 'skinSpeed', 'skinGear',
-  'skinMetricBox', 'skinRpmBar', 'skinFuelBar', 'skinTyreBarFL',
+  'skinRpmArc', 'skinRpmArcFill', 'skinRpmArcValue', 'setRpmArc',
+  'id="skinTotalBox" class="skinMetricBox skinRight skinRow3 clickable"',
+  'id="skinFuelBox" class="skinMetricBox skinFuelBox"',
+  'skinFuelBar', 'skinTyreBarFL',
   'setInterval(syncSkin, 160)', "copyValue('total'", "copyValue('best'"
 ]) {
   if (!skinCode.includes(marker)) throw new Error(`Interface funcional incompleta: ${marker}`);
+}
+if (skinCode.includes('id="skinRpmBar"') || skinCode.includes('skinMetricBox skinLeft skinRow1')) {
+  throw new Error('Card retangular de RPM ainda presente na interface visível');
 }
 
 const skinCss = fs.readFileSync(path.join(path.dirname(target), 'cockpit-functional-skin.css'), 'utf8');
 for (const marker of [
   '#dashLegacySources{display:none!important}',
   'background-image:var(--cockpit-art)',
-  '.cockpitFunctionalSkin::after', '.skinMetricBox', '.skinRpmFill',
+  '.cockpitFunctionalSkin::after', '.skinMetricBox',
+  '.skinRpmArc', '.skinRpmArcFill', '.skinRpmArcGlow',
+  '.skinFuelBox{left:50.5%;top:73.3%',
   '.skinFuelFill', '.skinTyreBox', '.skinTyreTitle'
 ]) {
   if (!skinCss.includes(marker)) throw new Error(`Composição da interface sobre a arte incompleta: ${marker}`);
@@ -115,4 +123,4 @@ if (html.includes('src="cockpit-bg-tiny.js"')) throw new Error('Fundo reduzido a
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Arte, cards funcionais e fontes ocultas validados no APK:', target);
+console.log('RPM em arco, tempo total e combustível reposicionados e validados no APK:', target);
