@@ -3,10 +3,9 @@
 
   const $ = (id) => document.getElementById(id);
   const DEFAULT_BASE = 'http://192.168.1.70:8788';
+  const SEGMENTS = 14;
   let requestRunning = false;
   let fuelPercent = null;
-  let lapsRemaining = null;
-  let lastLapConsumedLiters = null;
 
   function bridgeBase() {
     return (localStorage.getItem('gt7_bridge_url') || DEFAULT_BASE).replace(/\/$/, '');
@@ -14,7 +13,7 @@
 
   function numberOrNull(value) {
     const number = Number(value);
-    return Number.isFinite(number) && number >= 0 ? number : null;
+    return Number.isFinite(number) ? number : null;
   }
 
   function getPath(object, path) {
@@ -39,30 +38,20 @@
     return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
   }
 
-  function ensureMeta() {
-    const tile = $('fuelDash')?.closest('.fuelTile');
-    if (!tile || $('fuelEstimateMeta')) return;
-    const meta = document.createElement('div');
-    meta.id = 'fuelEstimateMeta';
-    meta.className = 'sub';
-    meta.textContent = 'Complete uma volta válida';
-    $('fuelDash').insertAdjacentElement('afterend', meta);
-  }
-
   function buildMarker() {
     const root = $('fuelMiniMarker');
     if (!root || root.dataset.ready === '1') return;
-    root.innerHTML = Array.from({ length: 14 }, (_, index) => {
-      const hue = Math.round(8 + (index / 13) * 112);
+    root.innerHTML = Array.from({ length: SEGMENTS }, (_, index) => {
+      const hue = Math.round(8 + (index / (SEGMENTS - 1)) * 112);
       return `<i class="fuelSeg" data-hue="${hue}" style="color:hsl(${hue},100%,50%)"></i>`;
     }).join('');
     root.dataset.ready = '1';
   }
 
-  function formatLaps(value) {
-    if (!Number.isFinite(value)) return '-- VOLTAS';
-    if (value >= 100) return '99+ VOLTAS';
-    return `${value < 10 ? value.toFixed(1) : value.toFixed(0)} VOLTAS`;
+  function removeUnwantedDashboardCards() {
+    $('identityCarCard')?.remove();
+    $('identityTrackCard')?.remove();
+    $('fuelEstimateMeta')?.remove();
   }
 
   function render() {
@@ -70,18 +59,16 @@
     const marker = $('fuelMiniMarker');
     if (!value || !marker) return;
 
-    ensureMeta();
+    removeUnwantedDashboardCards();
     buildMarker();
-    value.textContent = formatLaps(lapsRemaining);
 
-    const meta = $('fuelEstimateMeta');
-    if (meta) {
-      meta.textContent = Number.isFinite(lastLapConsumedLiters)
-        ? `Última volta: ${lastLapConsumedLiters.toFixed(2)} L consumidos`
-        : 'Complete uma volta válida';
-    }
+    value.textContent = fuelPercent == null ? '--%' : `${Math.round(fuelPercent)}%`;
+    const active = fuelPercent == null
+      ? 0
+      : Math.max(0, Math.min(SEGMENTS, Math.round((fuelPercent / 100) * SEGMENTS)));
 
-    const active = fuelPercent == null ? 0 : Math.round((fuelPercent / 100) * 14);
+    marker.classList.toggle('fuelLow', fuelPercent != null && active <= 3);
+
     [...marker.children].forEach((segment, index) => {
       const hue = segment.dataset.hue;
       const on = fuelPercent != null && index < active;
@@ -91,28 +78,14 @@
   }
 
   function applyPayload(payload) {
-    const nextLaps = firstNumber(payload, [
-      'live.fuel.lapsRemaining',
-      'live.fuel.remainingFuelLaps',
-      'session.fuelLapsRemaining',
-      'session.remainingFuelLaps',
-      'fuel.lapsRemaining',
-      'fuel.remainingFuelLaps'
-    ]);
-    const nextConsumed = firstNumber(payload, [
-      'live.fuel.lastLapConsumedLiters',
-      'session.lastLapFuelConsumedLiters',
-      'fuel.lastLapConsumedLiters'
-    ]);
     const nextPercent = firstNumber(payload, [
       'live.fuel.percent',
       'live.telemetry.fuel.percent',
-      'fuel.percent'
+      'live.legacy.fuelPercent',
+      'fuel.percent',
+      'fuelPercent'
     ]);
-
-    lapsRemaining = nextLaps;
-    lastLapConsumedLiters = nextConsumed;
-    if (nextPercent != null && nextPercent <= 100) fuelPercent = nextPercent;
+    if (nextPercent != null) fuelPercent = Math.max(0, Math.min(100, nextPercent));
   }
 
   async function refresh() {
@@ -133,7 +106,10 @@
 
   function init() {
     const dashboardGrid = document.querySelector('#dash > .grid');
-    if (dashboardGrid) dashboardGrid.classList.add('dashGrid');
+    if (dashboardGrid) {
+      dashboardGrid.classList.add('dashGrid');
+      new MutationObserver(removeUnwantedDashboardCards).observe(dashboardGrid, { childList: true });
+    }
 
     const source = $('fuel');
     if (source) {
@@ -156,6 +132,7 @@
       render();
     });
 
+    removeUnwantedDashboardCards();
     render();
     refresh();
     setInterval(refresh, 1200);
