@@ -28,6 +28,23 @@ for (const id of requiredPages) {
   if (!html.includes(`data-p="${id}"`)) throw new Error(`Botão de navegação ausente: ${id}`);
 }
 
+const staticDashboardMarkers = [
+  'class="hero heroSeparated"',
+  'class="box card heroMetricCard"',
+  'id="rpmMetricCard"',
+  'id="totalTimeCard"',
+  'class="card speedGaugePanel"',
+  'id="bestTimeCard"',
+  'id="tyreTempsPanel"',
+  'id="tyreTempFL"',
+  'id="tyreTempFR"',
+  'id="tyreTempRL"',
+  'id="tyreTempRR"'
+];
+for (const marker of staticDashboardMarkers) {
+  if (!html.includes(marker)) throw new Error(`Layout estático ausente no APK: ${marker}`);
+}
+
 const externalFiles = [
   ['telemetry-bc.js', 'src="telemetry-bc.js"'],
   ['telemetry-bc.css', 'href="telemetry-bc.css"'],
@@ -97,4 +114,4 @@ if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com úl
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime, cards separados, cópia de tempos, pneus, scroll e combustível validados:', target);
+console.log('Runtime e layout estático final validados dentro do HTML do APK:', target);
