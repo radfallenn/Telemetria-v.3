@@ -91,8 +91,8 @@ for (const marker of ['__cockpitBgChunks', "chunks.join('')", '--cockpit-art']) 
 const skinCode = fs.readFileSync(path.join(path.dirname(target), 'cockpit-functional-skin.js'), 'utf8');
 for (const marker of [
   'dashLegacySources', 'cockpitFunctionalSkin', 'skinSpeed', 'skinGear',
-  'skinRpmBar', 'skinFuelBar', 'skinTyreBarFL', 'setInterval(syncSkin, 160)',
-  "copyValue('total'", "copyValue('best'"
+  'skinMetricBox', 'skinRpmBar', 'skinFuelBar', 'skinTyreBarFL',
+  'setInterval(syncSkin, 160)', "copyValue('total'", "copyValue('best'"
 ]) {
   if (!skinCode.includes(marker)) throw new Error(`Interface funcional incompleta: ${marker}`);
 }
@@ -101,9 +101,10 @@ const skinCss = fs.readFileSync(path.join(path.dirname(target), 'cockpit-functio
 for (const marker of [
   '#dashLegacySources{display:none!important}',
   'background-image:var(--cockpit-art)',
-  '.skinSpeed', '.skinGear', '.skinRpmTrack', '.skinFuelTrack', '.skinTyreTrack'
+  '.cockpitFunctionalSkin::after', '.skinMetricBox', '.skinRpmFill',
+  '.skinFuelFill', '.skinTyreBox', '.skinTyreTitle'
 ]) {
-  if (!skinCss.includes(marker)) throw new Error(`Posicionamento sobre a arte incompleto: ${marker}`);
+  if (!skinCss.includes(marker)) throw new Error(`Composição da interface sobre a arte incompleta: ${marker}`);
 }
 
 for (const marker of ["ok:Boolean(g(L,'packet.connected'", "('OK · '+f.ver)", "'PS5 WAIT'", "'BRIDGE OFF'"]) {
@@ -114,4 +115,4 @@ if (html.includes('src="cockpit-bg-tiny.js"')) throw new Error('Fundo reduzido a
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Interface da imagem, fontes ocultas e dados reais validados no APK:', target);
+console.log('Arte, cards funcionais e fontes ocultas validados no APK:', target);
