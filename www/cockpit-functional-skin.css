@@ -1,1 +1,56 @@
-#dash.cockpitSkinActive{padding:0!important;background:#000!important;background-image:none!important;min-height:auto!important;overflow:visible!important}#dash.cockpitSkinActive::before,#dash.cockpitSkinActive::after{display:none!important}#dashLegacySources{display:none!important}.cockpitFunctionalSkin{position:relative;width:100%;aspect-ratio:706/1175;background-image:var(--cockpit-art);background-size:100% auto;background-position:center top;background-repeat:no-repeat;background-color:#02070b;border-radius:20px;overflow:hidden;box-shadow:0 0 32px rgba(0,145,255,.18);touch-action:pan-y}.cockpitFunctionalSkin::after{content:"";position:absolute;left:2.7%;right:2.7%;top:40.7%;bottom:1.2%;z-index:0;border-radius:12px;background:rgba(1,7,12,.965);box-shadow:0 0 18px rgba(0,120,255,.10);pointer-events:none}.cockpitFunctionalSkin *{box-sizing:border-box}.skinCenter,.skinMetricBox,.skinTyreBox,.skinTyreTitle{z-index:1}.skinCenter{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;color:#f4f7fb;font-family:Arial,sans-serif;font-weight:900;line-height:1;background:#02080dfb;box-shadow:0 0 9px 7px #02080dfb;text-shadow:0 2px 8px #000}.skinConnection{left:88%;top:2.5%;width:16%;height:4.2%;font-size:2.8vw;border-radius:999px}.skinConnection small{display:block;font-size:1.9vw;font-weight:600;color:#bcc6cf;margin-top:2px}.skinBridge{left:50%;top:7.8%;width:35%;height:3.3%;font-size:2.7vw;color:#00d8ff;border-radius:5px}.skinSpeed{left:50%;top:24.8%;width:35%;height:11.5%;font-size:13.2vw;font-style:italic;border-radius:50%}.skinGear{left:50%;top:35.1%;width:18%;height:8.5%;font-size:10vw;color:#1597ff;font-style:italic;border-radius:50%}.skinMetricBox{position:absolute;background:linear-gradient(180deg,rgba(5,15,23,.98),rgba(1,8,13,.99));color:#f4f7fb;border:1px solid rgba(36,151,255,.24);border-radius:8px;box-shadow:inset 0 0 12px rgba(0,160,255,.035);padding:1.6% 2%;display:flex;flex-direction:column;justify-content:center;font-family:Arial,sans-serif;text-shadow:0 2px 6px #000}.skinMetricBox .skinLabel{font-size:2.1vw;font-weight:700;letter-spacing:.05em;color:#d7dde3;margin-bottom:1.3%}.skinMetricBox .skinValue{font-size:4.1vw;font-weight:900;line-height:1.05}.skinMetricBox.clickable{cursor:pointer}.skinLeft{left:3.8%;width:45.3%}.skinRight{left:50.5%;width:45.5%}.skinRow1{top:42.4%;height:7.2%}.skinRow2{top:50.1%;height:7.1%}.skinRow3{top:57.9%;height:7.2%}.skinRow4{top:65.7%;height:6.8%}.skinRow5{top:73.3%;height:7.1%}.skinCyan{color:#20dcff!important}.skinRed{color:#ff476a!important}.skinGreen{color:#55ed38!important}.skinSmallText{font-size:1.85vw;color:#9ca9b3;margin-top:1.5%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.skinBar{height:10%;min-height:6px;margin-top:4%;border-radius:999px;background:#222d34;overflow:hidden;box-shadow:inset 0 0 7px #000}.skinBar i{display:block;height:100%;width:0;border-radius:inherit;transition:width .15s linear}.skinRpmFill{background:linear-gradient(90deg,#00e5ff,#14ff8a,#ffe600,#ff8a00,#ff3b3b);box-shadow:0 0 8px rgba(0,229,255,.45)}.skinThrFill{background:#37e82c;box-shadow:0 0 8px rgba(55,232,44,.55)}.skinBrkFill{background:#ff332d;box-shadow:0 0 8px rgba(255,51,45,.55)}.skinFuelFill{background:#22d7ff;box-shadow:0 0 8px rgba(34,215,255,.55)}.skinUdmBox{left:3.8%;top:73.3%;width:45.3%;height:7.1%}.skinTyreBox{position:absolute;background:linear-gradient(180deg,rgba(5,15,23,.98),rgba(1,8,13,.99));border:1px solid rgba(36,151,255,.22);border-radius:8px;padding:1.4% 2%;display:flex;flex-direction:column;justify-content:center;font-family:Arial,sans-serif}.skinTyreBox .skinLabel{font-size:1.9vw;color:#d7dde3;font-weight:700;letter-spacing:.04em}.skinTyreBox .skinValue{font-size:3.8vw;color:#20dcff;font-weight:900;margin-top:1%}.skinTyreBox .skinBar{height:9%;margin-top:3%}.skinTyreTitle{position:absolute;left:5.2%;top:81.2%;font:800 2.2vw Arial,sans-serif;letter-spacing:.08em;color:#d7dde3}.skinTyreFL{left:5.2%;top:83.3%;width:43.5%;height:6.7%}.skinTyreFR{left:51.2%;top:83.3%;width:43.5%;height:6.7%}.skinTyreRL{left:5.2%;top:91%;width:43.5%;height:6.7%}.skinTyreRR{left:51.2%;top:91%;width:43.5%;height:6.7%}.skinTyreFill{background:#42f51d;box-shadow:0 0 8px rgba(66,245,29,.55)}.skinCopied{animation:skinCopiedFlash .7s ease}@keyframes skinCopiedFlash{0%,100%{filter:none}50%{filter:brightness(2.2);text-shadow:0 0 16px #fff}}@media(max-width:380px){.cockpitFunctionalSkin{border-radius:16px}.skinMetricBox .skinLabel,.skinTyreBox .skinLabel{font-size:2.35vw}}
+#dash.cockpitSkinActive{padding:0!important;background:#000!important;background-image:none!important;min-height:auto!important;overflow:visible!important}
+#dash.cockpitSkinActive::before,#dash.cockpitSkinActive::after{display:none!important}
+#dashLegacySources{display:none!important}
+.cockpitFunctionalSkin{position:relative;width:100%;aspect-ratio:706/1175;background-image:var(--cockpit-art);background-size:100% auto;background-position:center top;background-repeat:no-repeat;background-color:#02070b;border-radius:20px;overflow:hidden;box-shadow:0 0 32px rgba(0,145,255,.18);touch-action:pan-y}
+.cockpitFunctionalSkin::after{content:"";position:absolute;left:2.7%;right:2.7%;top:40.7%;bottom:1.2%;z-index:0;border-radius:12px;background:rgba(1,7,12,.965);box-shadow:0 0 18px rgba(0,120,255,.10);pointer-events:none}
+.cockpitFunctionalSkin *{box-sizing:border-box}
+.skinCenter,.skinMetricBox,.skinTyreBox,.skinTyreTitle{z-index:3}
+.skinCenter{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;color:#f4f7fb;font-family:Arial,sans-serif;font-weight:900;line-height:1;background:#02080dfb;box-shadow:0 0 9px 7px #02080dfb;text-shadow:0 2px 8px #000}
+.skinConnection{left:88%;top:2.5%;width:16%;height:4.2%;font-size:2.8vw;border-radius:999px}
+.skinConnection small{display:block;font-size:1.9vw;font-weight:600;color:#bcc6cf;margin-top:2px}
+.skinBridge{left:50%;top:7.8%;width:35%;height:3.3%;font-size:2.7vw;color:#00d8ff;border-radius:5px}
+.skinSpeed{left:50%;top:24.8%;width:35%;height:11.5%;font-size:13.2vw;font-style:italic;border-radius:50%}
+.skinGear{left:50%;top:35.1%;width:18%;height:8.5%;font-size:10vw;color:#1597ff;font-style:italic;border-radius:50%}
+.skinRpmArc{position:absolute;left:7.3%;top:10.6%;width:85.4%;height:29.7%;z-index:2;pointer-events:none;filter:drop-shadow(0 0 8px rgba(0,183,255,.22))}
+.skinRpmArc svg{display:block;width:100%;height:100%;overflow:visible}
+.skinRpmArcTrack,.skinRpmArcFill,.skinRpmArcGlow{fill:none;stroke-linecap:round}
+.skinRpmArcTrack{stroke:rgba(26,42,52,.94);stroke-width:15}
+.skinRpmArcFill{stroke:url(#skinRpmGradient);stroke-width:15;stroke-dasharray:0 100;transition:stroke-dasharray .14s linear;filter:drop-shadow(0 0 5px rgba(22,255,84,.55))}
+.skinRpmArcGlow{stroke:#fff;stroke-width:5;stroke-dasharray:0 100;opacity:0;filter:drop-shadow(0 0 10px #fff);transition:opacity .14s ease,stroke-dasharray .14s linear,stroke-dashoffset .14s linear}
+.skinRpmArc.nearLimit .skinRpmArcGlow{opacity:1;animation:skinRpmLimitFlash .32s linear infinite}
+.skinRpmTicks text{fill:#edf2f5;font:700 24px Arial,sans-serif;text-anchor:middle;paint-order:stroke;stroke:#02080d;stroke-width:5px}
+.skinRpmArcValue{position:absolute;left:50%;top:5%;transform:translateX(-50%);font:800 2.2vw Arial,sans-serif;color:#aeb8c0;letter-spacing:.06em;text-shadow:0 2px 6px #000;white-space:nowrap}
+@keyframes skinRpmLimitFlash{0%,100%{opacity:1}50%{opacity:.18}}
+.skinMetricBox{position:absolute;background:linear-gradient(180deg,rgba(5,15,23,.98),rgba(1,8,13,.99));color:#f4f7fb;border:1px solid rgba(36,151,255,.24);border-radius:8px;box-shadow:inset 0 0 12px rgba(0,160,255,.035);padding:1.6% 2%;display:flex;flex-direction:column;justify-content:center;font-family:Arial,sans-serif;text-shadow:0 2px 6px #000}
+.skinMetricBox .skinLabel{font-size:2.1vw;font-weight:700;letter-spacing:.05em;color:#d7dde3;margin-bottom:1.3%}
+.skinMetricBox .skinValue{font-size:4.1vw;font-weight:900;line-height:1.05}
+.skinMetricBox.clickable{cursor:pointer}
+.skinLeft{left:3.8%;width:45.3%}
+.skinRight{left:50.5%;width:45.5%}
+.skinRow2{top:50.1%;height:7.1%}
+.skinRow3{top:57.9%;height:7.2%}
+.skinRow4{top:65.7%;height:6.8%}
+.skinCyan{color:#20dcff!important}
+.skinRed{color:#ff476a!important}
+.skinGreen{color:#55ed38!important}
+.skinSmallText{font-size:1.85vw;color:#9ca9b3;margin-top:1.5%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.skinBar{height:10%;min-height:6px;margin-top:4%;border-radius:999px;background:#222d34;overflow:hidden;box-shadow:inset 0 0 7px #000}
+.skinBar i{display:block;height:100%;width:0;border-radius:inherit;transition:width .15s linear}
+.skinThrFill{background:#37e82c;box-shadow:0 0 8px rgba(55,232,44,.55)}
+.skinBrkFill{background:#ff332d;box-shadow:0 0 8px rgba(255,51,45,.55)}
+.skinFuelFill{background:#22d7ff;box-shadow:0 0 8px rgba(34,215,255,.55)}
+.skinUdmBox{left:3.8%;top:73.3%;width:45.3%;height:7.1%}
+.skinFuelBox{left:50.5%;top:73.3%;width:45.5%;height:7.1%}
+.skinTyreBox{position:absolute;background:linear-gradient(180deg,rgba(5,15,23,.98),rgba(1,8,13,.99));border:1px solid rgba(36,151,255,.22);border-radius:8px;padding:1.4% 2%;display:flex;flex-direction:column;justify-content:center;font-family:Arial,sans-serif}
+.skinTyreBox .skinLabel{font-size:1.9vw;color:#d7dde3;font-weight:700;letter-spacing:.04em}
+.skinTyreBox .skinValue{font-size:3.8vw;color:#20dcff;font-weight:900;margin-top:1%}
+.skinTyreBox .skinBar{height:9%;margin-top:3%}
+.skinTyreTitle{position:absolute;left:5.2%;top:81.2%;font:800 2.2vw Arial,sans-serif;letter-spacing:.08em;color:#d7dde3}
+.skinTyreFL{left:5.2%;top:83.3%;width:43.5%;height:6.7%}
+.skinTyreFR{left:51.2%;top:83.3%;width:43.5%;height:6.7%}
+.skinTyreRL{left:5.2%;top:91%;width:43.5%;height:6.7%}
+.skinTyreRR{left:51.2%;top:91%;width:43.5%;height:6.7%}
+.skinTyreFill{background:#42f51d;box-shadow:0 0 8px rgba(66,245,29,.55)}
+.skinCopied{animation:skinCopiedFlash .7s ease}
+@keyframes skinCopiedFlash{0%,100%{filter:none}50%{filter:brightness(2.2);text-shadow:0 0 16px #fff}}
+@media(max-width:380px){.cockpitFunctionalSkin{border-radius:16px}.skinMetricBox .skinLabel,.skinTyreBox .skinLabel{font-size:2.35vw}.skinRpmArcValue{font-size:2.6vw}}
