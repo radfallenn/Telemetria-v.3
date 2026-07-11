@@ -48,7 +48,7 @@ jobs:
       - name: Estabilizar ciclos da interface
         run: node scripts/stabilize-ui-runtime.js
 
-      - name: Aplicar dashboard e grafico de RPM
+      - name: Aplicar arte completa e dashboard funcional
         run: node scripts/apply-dashboard-vertical-fuel.js
 
       - name: Corrigir status e conexão PS5
@@ -75,5 +75,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-Grafico-RPM-debug-apk
+          name: GT7-Telemetria-V4-Arte-Fundo-Funcional-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
