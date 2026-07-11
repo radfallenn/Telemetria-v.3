@@ -7,8 +7,14 @@ let html = fs.readFileSync(target, 'utf8');
 if (!html.includes('href="dashboard-vertical-fuel.css"')) {
   html = html.replace('</head>', '<link rel="stylesheet" href="dashboard-vertical-fuel.css"></head>');
 }
+if (!html.includes('href="rpm-graph.css"')) {
+  html = html.replace('</head>', '<link rel="stylesheet" href="rpm-graph.css"></head>');
+}
 if (!html.includes('src="dashboard-vertical-fuel.js"')) {
   html = html.replace('</body>', '<script src="dashboard-vertical-fuel.js"></script></body>');
+}
+if (!html.includes('src="rpm-graph.js"')) {
+  html = html.replace('</body>', '<script src="rpm-graph.js"></script></body>');
 }
 
 html = html.replace(
@@ -26,8 +32,15 @@ const newHero = '<div class="hero heroSeparated"><div class="box card heroMetric
 if (html.includes(oldHero)) html = html.replace(oldHero, newHero);
 
 const oldPack = '<div class="card pack"><div class="packTop"><div><div class="label">RPM</div><div id="rpmTop" class="rpmTop">0</div></div><div><div class="label">TEMPO TOTAL</div><div id="total" class="time">00:00.000</div></div></div><div class="line"></div><div class="mt">VELOCIDADE</div><div id="marker" class="marker"></div><div class="scale"><b>0</b><span>KM/H</span><b>300</b></div></div>';
-const newPack = '<div class="pack packSeparated"><div class="packTop packMetricsGrid"><div id="rpmMetricCard" class="card packMetricCard"><div class="label">RPM</div><div id="rpmTop" class="rpmTop">0</div></div><div id="totalTimeCard" class="card packMetricCard copyTimeCard" data-copy-label="Toque para copiar"><div class="label">TEMPO TOTAL</div><div id="total" class="time">00:00.000</div></div></div><div class="card speedGaugePanel"><div class="mt">VELOCIDADE</div><div id="marker" class="marker"></div><div class="scale"><b>0</b><span>KM/H</span><b>300</b></div></div></div>';
+const newPack = '<div class="pack packSeparated"><div class="packTop packMetricsGrid"><div id="rpmMetricCard" class="card packMetricCard"><div class="label">RPM</div><div id="rpmTop" class="rpmTop">0</div><div class="rpmGraph"><i id="rpmBarFill"></i></div></div><div id="totalTimeCard" class="card packMetricCard copyTimeCard" data-copy-label="Toque para copiar"><div class="label">TEMPO TOTAL</div><div id="total" class="time">00:00.000</div></div></div><div class="card speedGaugePanel"><div class="mt">VELOCIDADE</div><div id="marker" class="marker"></div><div class="scale"><b>0</b><span>KM/H</span><b>300</b></div></div></div>';
 if (html.includes(oldPack)) html = html.replace(oldPack, newPack);
+
+if (!html.includes('id="rpmBarFill"')) {
+  html = html.replace(
+    '<div id="rpmTop" class="rpmTop">0</div></div><div id="totalTimeCard"',
+    '<div id="rpmTop" class="rpmTop">0</div><div class="rpmGraph"><i id="rpmBarFill"></i></div></div><div id="totalTimeCard"'
+  );
+}
 
 html = html.replace(
   '<div class="card tile"><div class="label">MELHOR VOLTA</div><div id="best" class="val">--</div></div>',
@@ -45,6 +58,7 @@ const required = [
   'class="hero heroSeparated"',
   'class="box card heroMetricCard"',
   'id="rpmMetricCard"',
+  'id="rpmBarFill"',
   'id="totalTimeCard"',
   'class="card speedGaugePanel"',
   'id="bestTimeCard"',
@@ -54,7 +68,9 @@ const required = [
   'id="tyreTempFL"',
   'id="tyreTempRR"',
   'href="dashboard-vertical-fuel.css"',
-  'src="dashboard-vertical-fuel.js"'
+  'href="rpm-graph.css"',
+  'src="dashboard-vertical-fuel.js"',
+  'src="rpm-graph.js"'
 ];
 for (const marker of required) {
   if (!html.includes(marker)) throw new Error(`Dashboard estático incompleto: ${marker}`);
@@ -62,4 +78,4 @@ for (const marker of required) {
 if (html.includes('<div class="label">ÚLTIMA VOLTA</div>')) throw new Error('Última volta ainda visível');
 
 fs.writeFileSync(target, html);
-console.log('Dashboard estático aplicado: cards separados, cópia de tempos e pneus');
+console.log('Dashboard estático aplicado com gráfico de RPM');
