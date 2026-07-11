@@ -96,7 +96,7 @@ const replacement = `function updateSession(t) {
 function applyDecoded`;
 
 source = source.replace(
-  /function updateSession\(t\) \{[\s\S]*?\n\}\n\nfunction applyDecoded/,
+  /function updateSession\(t\) \{[\s\S]*?\n\}\s*function applyDecoded/,
   replacement
 );
 
