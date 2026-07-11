@@ -27,6 +27,8 @@ jobs:
         run: node scripts/patch-index.js
       - name: Patch advanced widgets
         run: node scripts/patch-advanced-widgets.js
+      - name: Patch semicircle gauge
+        run: node scripts/patch-semicircle-gauge.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
