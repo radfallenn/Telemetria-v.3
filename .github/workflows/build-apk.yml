@@ -75,5 +75,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4-Fuel-Percent-Scroll-Livre-debug-apk
+          name: GT7-Telemetria-V4-Cards-Pneus-Copiar-Tempos-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
