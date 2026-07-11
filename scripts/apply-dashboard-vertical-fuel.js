@@ -7,7 +7,8 @@ let html = fs.readFileSync(target, 'utf8');
 const headAssets = [
   'dashboard-vertical-fuel.css',
   'rpm-graph.css',
-  'dashboard-art-background.css'
+  'dashboard-art-background.css',
+  'cockpit-functional-skin.css'
 ];
 for (const asset of headAssets) {
   const marker = `href="${asset}"`;
@@ -20,7 +21,8 @@ const bodyScripts = [
   'cockpit-bg-1.js',
   'cockpit-bg-2.js',
   'cockpit-bg-3.js',
-  'dashboard-art-background.js'
+  'dashboard-art-background.js',
+  'cockpit-functional-skin.js'
 ];
 for (const asset of bodyScripts) {
   const marker = `src="${asset}"`;
@@ -28,6 +30,7 @@ for (const asset of bodyScripts) {
 }
 
 html = html.replace(/(<section id="dash" class="page on">[\s\S]*?<div class="grid)(")/, '$1 dashGrid$2');
+html = html.replace(/(<section class="page on" id="dash">[\s\S]*?<div class="grid)(")/, '$1 dashGrid$2');
 
 html = html.replace(
   '<div class="card tile"><div class="label">ÚLTIMA VOLTA</div><div id="last" class="val">--</div></div>',
@@ -62,24 +65,21 @@ html = html.replace(/<div id="identityCarCard"[\s\S]*?<\/div><\/div>/g, '');
 html = html.replace(/<div id="identityTrackCard"[\s\S]*?<\/div><\/div>/g, '');
 
 const required = [
-  'class="hero heroSeparated"',
-  'id="rpmMetricCard"',
-  'id="rpmBarFill"',
-  'id="totalTimeCard"',
-  'id="bestTimeCard"',
+  'id="speed"',
+  'id="gear"',
+  'id="rpmTop"',
   'id="fuelDash"',
-  'id="fuelMiniMarker"',
-  'id="tyreTempsPanel"',
-  'href="dashboard-art-background.css"',
+  'href="cockpit-functional-skin.css"',
   'src="cockpit-bg-1.js"',
   'src="cockpit-bg-2.js"',
   'src="cockpit-bg-3.js"',
-  'src="dashboard-art-background.js"'
+  'src="dashboard-art-background.js"',
+  'src="cockpit-functional-skin.js"'
 ];
 for (const marker of required) {
-  if (!html.includes(marker)) throw new Error(`Dashboard final incompleto: ${marker}`);
+  if (!html.includes(marker)) throw new Error(`Dashboard funcional incompleto: ${marker}`);
 }
 if (html.includes('src="cockpit-bg-tiny.js"')) throw new Error('Imagem compacta antiga ainda carregada');
 
 fs.writeFileSync(target, html);
-console.log('Arte completa aplicada ao fundo da primeira página com funções preservadas');
+console.log('Primeira página substituída pela interface da arte com dados reais sobrepostos');
