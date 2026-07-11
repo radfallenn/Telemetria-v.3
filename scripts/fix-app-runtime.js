@@ -32,6 +32,7 @@ const staticDashboardMarkers = [
   'class="hero heroSeparated"',
   'class="box card heroMetricCard"',
   'id="rpmMetricCard"',
+  'id="rpmBarFill"',
   'id="totalTimeCard"',
   'class="card speedGaugePanel"',
   'id="bestTimeCard"',
@@ -52,7 +53,9 @@ const externalFiles = [
   ['identity-track.css', 'href="identity-track.css"'],
   ['navigation-guard.js', 'src="navigation-guard.js"'],
   ['dashboard-vertical-fuel.js', 'src="dashboard-vertical-fuel.js"'],
-  ['dashboard-vertical-fuel.css', 'href="dashboard-vertical-fuel.css"']
+  ['dashboard-vertical-fuel.css', 'href="dashboard-vertical-fuel.css"'],
+  ['rpm-graph.js', 'src="rpm-graph.js"'],
+  ['rpm-graph.css', 'href="rpm-graph.css"']
 ];
 for (const [fileName, marker] of externalFiles) {
   if (!html.includes(marker)) throw new Error(`Referência ausente no HTML: ${marker}`);
@@ -101,6 +104,15 @@ for (const marker of [
 ]) {
   if (!fuelCode.includes(marker)) throw new Error(`Dashboard interativo incompleto: ${marker}`);
 }
+const rpmCode = fs.readFileSync(path.join(path.dirname(target), 'rpm-graph.js'), 'utf8');
+for (const marker of ['rpmBarFill', 'maxAlertRpm', 'style.width']) {
+  if (!rpmCode.includes(marker)) throw new Error(`Gráfico de RPM incompleto: ${marker}`);
+}
+const rpmCss = fs.readFileSync(path.join(path.dirname(target), 'rpm-graph.css'), 'utf8');
+if (!rpmCss.includes('.rpmGraph') || !rpmCss.includes('linear-gradient')) throw new Error('CSS do gráfico de RPM incompleto');
+for (const forbidden of ['rgbSpin', 'conic-gradient', 'rpmShiftFlash']) {
+  if (rpmCss.includes(forbidden) || dashboardCss.includes(forbidden)) throw new Error(`Efeito não solicitado encontrado: ${forbidden}`);
+}
 for (const forbidden of ['lapsRemaining =', 'lastLapConsumedLiters =', 'formatLaps(', 'Complete uma volta válida']) {
   if (fuelCode.includes(forbidden)) throw new Error(`Autonomia ainda visível no card: ${forbidden}`);
 }
@@ -114,4 +126,4 @@ if (!html.includes('id="last" hidden')) throw new Error('Compatibilidade com úl
 if (!html.includes('viewport-fit=cover')) throw new Error('Viewport fullscreen ausente');
 
 fs.writeFileSync(target, html);
-console.log('Runtime e layout estático final validados dentro do HTML do APK:', target);
+console.log('Runtime e gráfico de RPM validados sem efeitos extras:', target);
