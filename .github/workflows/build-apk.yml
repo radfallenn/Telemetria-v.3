@@ -29,6 +29,8 @@ jobs:
         run: node scripts/patch-advanced-widgets.js
       - name: Patch semicircle gauge
         run: node scripts/patch-semicircle-gauge.js
+      - name: Patch V4 Stitch layout
+        run: node scripts/patch-v4-stitch-layout.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -42,5 +44,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v3-debug-apk
+          name: Telemetria-v4-cockpit-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
