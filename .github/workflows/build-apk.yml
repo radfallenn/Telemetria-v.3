@@ -29,6 +29,8 @@ jobs:
         run: node scripts/patch-v4-hard-nav.js
       - name: Apply definitive native Bridge connection
         run: node scripts/patch-v4-definitive-connection.js
+      - name: Apply reference APK Bridge connection
+        run: node scripts/patch-v4-reference-bridge.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -44,5 +46,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-definitive-bridge-debug-apk
+          name: Telemetria-v4-reference-bridge-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
