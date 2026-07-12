@@ -29,6 +29,8 @@ jobs:
         run: node scripts/patch-v4-hard-nav.js
       - name: Apply fixed Bridge and PS5 network
         run: node scripts/patch-v4-fixed-network.js
+      - name: Split RPM total and speed cards
+        run: node scripts/patch-v4-split-rpm-total-speed.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -44,5 +46,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-fixed-8788-ps5-71-debug-apk
+          name: Telemetria-v4-three-cards-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
