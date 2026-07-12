@@ -29,10 +29,8 @@ jobs:
         run: node scripts/patch-v4-native-http.js
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
-      - name: Unlock normal windows
-        run: node scripts/patch-v4-unlock-normal-windows.js
-      - name: Final definitive navigation fix
-        run: node scripts/final-fix-navigation.js
+      - name: Apply independent hard navigation
+        run: node scripts/patch-v4-hard-nav.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -48,5 +46,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-final-navigation-debug-apk
+          name: Telemetria-v4-hard-navigation-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
