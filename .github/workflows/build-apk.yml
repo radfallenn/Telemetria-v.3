@@ -25,6 +25,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Patch Bridge V4 connection
         run: node scripts/patch-v4-bridge-connection.js
+      - name: Patch native HTTP Bridge
+        run: node scripts/patch-v4-native-http.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -40,5 +42,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-bridge-fixed-debug-apk
+          name: Telemetria-v4-native-bridge-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
