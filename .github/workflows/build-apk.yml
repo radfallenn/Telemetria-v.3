@@ -31,6 +31,8 @@ jobs:
         run: node scripts/patch-v4-fixed-network.js
       - name: Apply RPM C gauge and full-frame
         run: node scripts/patch-v4-rpm-c-fullframe.js
+      - name: Separate RPM total and fuel cards
+        run: node scripts/patch-v4-separate-rpm-total-fuel.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -46,5 +48,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-rpm-c-fullframe-debug-apk
+          name: Telemetria-v4-rpm-total-fuel-cards-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
