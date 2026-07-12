@@ -33,6 +33,8 @@ jobs:
         run: node scripts/patch-v4-stitch-layout.js
       - name: Patch V4 MD design
         run: node scripts/patch-v4-md-design.js
+      - name: Patch V4 final dashboard
+        run: node scripts/patch-v4-final-dashboard.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -46,5 +48,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-md-debug-apk
+          name: Telemetria-v4-final-dashboard-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
