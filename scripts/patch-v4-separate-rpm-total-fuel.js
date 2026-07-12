@@ -7,21 +7,25 @@ if(html.includes(MARK)){console.log('JA OK:',MARK);process.exit(0)}
 
 html=html.replace('</style>',`
 /* ${MARK} */
-.v4MetricsSeparate{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
-.v4MetricCard{min-height:150px;padding:22px;border:1px solid #15383b;border-radius:24px;background:linear-gradient(180deg,rgba(5,22,22,.96),rgba(1,8,9,.98));box-shadow:inset 0 1px rgba(255,255,255,.025),0 14px 28px rgba(0,0,0,.28)}
-.v4MetricCard .v4Label{font-family:Georgia,serif;font-size:22px;font-weight:800;letter-spacing:2px;color:#cfd0d1}
-.v4MetricCard .v4Value{font-size:54px;line-height:1.05;margin-top:30px;color:#fff;font-weight:300}
-.v4FuelCard{grid-column:1/-1;min-height:178px}
-.v4FuelTop{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
-.v4FuelPct{font-size:48px;color:var(--cyan);font-weight:300;line-height:1}
-.v4FuelBars{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-top:28px}
-.v4FuelBar{height:48px;border-radius:8px;background:#172326;opacity:.7;transition:background .12s,box-shadow .12s,opacity .12s}
-.v4FuelBar.on{opacity:1;background:linear-gradient(180deg,#10ef55,#dfff14 55%,#ff9f0a 78%,#ff344f);box-shadow:0 0 10px rgba(16,239,85,.55)}
+.v4MetricsSeparate{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.v4MetricCard{min-height:126px;padding:17px;border:1px solid #15383b;border-radius:22px;background:linear-gradient(180deg,rgba(5,22,22,.96),rgba(1,8,9,.98));box-shadow:inset 0 1px rgba(255,255,255,.025),0 14px 28px rgba(0,0,0,.28)}
+.v4MetricCard .v4Label{font-family:Georgia,serif;font-size:16px;font-weight:800;letter-spacing:1.5px;color:#cfd0d1}
+.v4MetricCard .v4Value{font-size:40px;line-height:1.05;margin-top:22px;color:#fff;font-weight:300}
+.v4FuelCard{grid-column:1/-1;min-height:148px}
+.v4FuelTop{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.v4FuelPct{font-size:36px;color:var(--cyan);font-weight:300;line-height:1}
+.v4FuelBars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:22px;direction:ltr}
+.v4FuelBar{height:38px;border-radius:7px;background:#172326;opacity:.7;transition:background .12s,box-shadow .12s,opacity .12s}
+.v4FuelBar.on{opacity:1}
+.v4FuelBar.on:nth-child(-n+2){background:#ff344f;box-shadow:0 0 10px rgba(255,52,79,.75)}
+.v4FuelBar.on:nth-child(n+3):nth-child(-n+4){background:#ff7a18;box-shadow:0 0 10px rgba(255,122,24,.68)}
+.v4FuelBar.on:nth-child(n+5):nth-child(-n+7){background:#e7ff19;box-shadow:0 0 10px rgba(231,255,25,.62)}
+.v4FuelBar.on:nth-child(n+8){background:#10ef55;box-shadow:0 0 10px rgba(16,239,85,.62)}
 .v4FuelCard.lowFuel{animation:v4FuelBlink .7s steps(2,end) infinite}
 .v4FuelCard.lowFuel .v4FuelBar.on{background:#ff344f;box-shadow:0 0 16px rgba(255,52,79,.95)}
 @keyframes v4FuelBlink{0%,48%{opacity:1;filter:none}49%,100%{opacity:.35;filter:drop-shadow(0 0 14px #ff344f)}}
 .v4OldCombinedHidden{display:none!important}
-@media(max-width:430px){.v4MetricsSeparate{gap:10px}.v4MetricCard{min-height:138px;padding:18px}.v4MetricCard .v4Label{font-size:18px}.v4MetricCard .v4Value{font-size:46px;margin-top:26px}.v4FuelBars{gap:5px}.v4FuelBar{height:40px}}
+@media(max-width:430px){.v4MetricsSeparate{gap:9px}.v4MetricCard{min-height:112px;padding:14px}.v4MetricCard .v4Label{font-size:14px}.v4MetricCard .v4Value{font-size:34px;margin-top:18px}.v4FuelPct{font-size:30px}.v4FuelBars{gap:4px;margin-top:18px}.v4FuelBar{height:32px}}
 </style>`);
 
 html=html.replace('</body>',`<script>
@@ -59,7 +63,7 @@ html=html.replace('</body>',`<script>
  function update(){
   create();
   const L=window.live||{};
-  const rpm=n(L.rpm, n(txt('rpm')));
+  const rpm=n(L.rpm,n(txt('rpm')));
   const total=L.tempoTotalCorrida||L.analysis?.total||txt('totalTime')||txt('totalTimeCard')||'--';
   const fuel=fuelValue();
   const barsOn=Math.max(0,Math.min(12,Math.ceil(fuel/100*12)));
@@ -75,4 +79,4 @@ html=html.replace('</body>',`<script>
 </script>\n</body>`);
 
 fs.writeFileSync(file,html);
-console.log('RPM, tempo total e combustivel separados em tres cards.');
+console.log('Combustivel vermelho a esquerda, verde a direita e fontes reduzidas.');
