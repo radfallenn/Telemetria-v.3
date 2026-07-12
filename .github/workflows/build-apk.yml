@@ -33,6 +33,8 @@ jobs:
         run: node scripts/patch-v4-rpm-c-fullframe.js
       - name: Separate RPM total and fuel cards
         run: node scripts/patch-v4-separate-rpm-total-fuel.js
+      - name: Add custom item builder with three slots
+        run: node scripts/patch-v4-custom-items-3-slots.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -45,8 +47,12 @@ jobs:
         run: chmod +x android/gradlew
       - name: Build Debug APK
         run: cd android && ./gradlew assembleDebug --stacktrace
+      - name: Rename APK
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.01-debug.apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-rpm-total-fuel-cards-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: GT7-Telemetria-V4.01
+          path: release/GT7-Telemetria-V4.01-debug.apk
