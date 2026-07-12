@@ -2,15 +2,25 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.studiorad.telemetriav3',
-  appName: 'Telemetria v3',
+  appName: 'Telemetria v4',
   webDir: 'www',
   server: {
     androidScheme: 'http',
-    cleartext: true
+    cleartext: true,
+    allowNavigation: [
+      '192.168.1.70',
+      '192.168.1.*',
+      '*'
+    ]
   },
   android: {
     allowMixedContent: true,
     webContentsDebuggingEnabled: true
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 
