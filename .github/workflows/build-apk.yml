@@ -29,8 +29,6 @@ jobs:
         run: node scripts/patch-v4-hard-nav.js
       - name: Apply fixed Bridge and PS5 network
         run: node scripts/patch-v4-fixed-network.js
-      - name: Split RPM total and speed cards
-        run: node scripts/patch-v4-three-cards.js
       - name: Apply RPM C gauge and full-frame
         run: node scripts/patch-v4-rpm-c-fullframe.js
       - name: Add Android
