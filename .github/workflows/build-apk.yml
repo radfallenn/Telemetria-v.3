@@ -27,8 +27,8 @@ jobs:
         run: node scripts/patch-v4-windows-card-height.js
       - name: Apply independent hard navigation
         run: node scripts/patch-v4-hard-nav.js
-      - name: Apply stable reference Bridge 8788
-        run: node scripts/patch-v4-reference-bridge.js
+      - name: Apply fixed Bridge and PS5 network
+        run: node scripts/patch-v4-fixed-network.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -44,5 +44,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Telemetria-v4-stable-bridge-debug-apk
+          name: Telemetria-v4-fixed-8788-ps5-71-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
