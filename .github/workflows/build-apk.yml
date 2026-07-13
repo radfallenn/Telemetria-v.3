@@ -39,6 +39,8 @@ jobs:
         run: node scripts/patch-v4-laps-fuel-references.js
       - name: Apply designer editing and scroll fixes
         run: node scripts/patch-v4-designer-edit-scroll-dashboard.js
+      - name: Apply final total builder layout and font fixes
+        run: node scripts/patch-v4-total-builder-layout-fonts.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -54,9 +56,9 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.01-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.02-debug.apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.01
-          path: release/GT7-Telemetria-V4.01-debug.apk
+          name: GT7-Telemetria-V4.02
+          path: release/GT7-Telemetria-V4.02-debug.apk
