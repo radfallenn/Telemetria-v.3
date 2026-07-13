@@ -37,6 +37,8 @@ jobs:
         run: node scripts/patch-v4-custom-items-3-slots.js
       - name: Apply laps fuel and reference fixes
         run: node scripts/patch-v4-laps-fuel-references.js
+      - name: Apply designer editing and scroll fixes
+        run: node scripts/patch-v4-designer-edit-scroll-dashboard.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
