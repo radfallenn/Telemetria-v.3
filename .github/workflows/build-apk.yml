@@ -49,6 +49,8 @@ jobs:
         run: node scripts/patch-v4-grid-arrows-all-attributes.js
       - name: Add total last lap and general average cards
         run: node scripts/patch-v4-total-last-average-cards.js
+      - name: Remove card designer and expand telemetry attributes
+        run: node scripts/patch-v4-remove-designer-expand-attributes.js
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -64,9 +66,9 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.04-Tempos-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.05-Atributos-debug.apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.04-Tempos
-          path: release/GT7-Telemetria-V4.04-Tempos-debug.apk
+          name: GT7-Telemetria-V4.05-Atributos
+          path: release/GT7-Telemetria-V4.05-Atributos-debug.apk
