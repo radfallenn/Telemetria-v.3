@@ -60,10 +60,10 @@ jobs:
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
 
-      - name: Install automatic single Bridge
+      - name: Install clean automatic Bridge
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Validate final web package
+      - name: Validate clean connection package
         run: |
           test -s www/index.html
           test -s www/bridge-v408.js
@@ -73,8 +73,9 @@ jobs:
           grep -q 'bridge-v408.js' www/index.html
           grep -q 'http://192.168.1.70:8788' www/bridge-v408.js
           grep -q "const PS5 = '192.168.1.71'" www/bridge-v408.js
-          grep -q '__gt7BridgeControllerStarted' www/bridge-v408.js
-          test "$(grep -c '__gt7BridgeControllerStarted = true' www/bridge-v408.js)" -eq 1
+          grep -q '__gt7CleanBridgeStarted' www/bridge-v408.js
+          test "$(grep -c '__gt7CleanBridgeStarted = true' www/bridge-v408.js)" -eq 1
+          test "$(grep -o 'bridge-v408.js' www/index.html | wc -l)" -eq 1
           ! grep -q 'http://192.168.1.70:8787' www/index.html
           ! grep -q '192.168.1.68' www/index.html
 
@@ -87,14 +88,14 @@ jobs:
       - name: Allow local HTTP network
         run: node scripts/patch-android-network.js
 
-      - name: Validate no background services or extra permissions
+      - name: Validate minimal Android permissions
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$MANIFEST"
           ! grep -q 'TelemetryForegroundService' "$MANIFEST"
           ! grep -q 'TelemetryBootReceiver' "$MANIFEST"
           ! grep -q 'android.permission.WAKE_LOCK' "$MANIFEST"
           ! grep -q 'android.permission.FOREGROUND_SERVICE' "$MANIFEST"
-          ! grep -q 'android.permission.FOREGROUND_SERVICE_DATA_SYNC' "$MANIFEST"
           ! grep -q 'android.permission.POST_NOTIFICATIONS' "$MANIFEST"
           ! grep -q 'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' "$MANIFEST"
           ! grep -q 'android.permission.RECEIVE_BOOT_COMPLETED' "$MANIFEST"
@@ -108,10 +109,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.13-Sem-Segundo-Plano-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.14-Conexao-Limpa-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.13-Sem-Segundo-Plano
-          path: release/GT7-Telemetria-V4.13-Sem-Segundo-Plano-debug.apk
+          name: GT7-Telemetria-V4.14-Conexao-Limpa
+          path: release/GT7-Telemetria-V4.14-Conexao-Limpa-debug.apk
