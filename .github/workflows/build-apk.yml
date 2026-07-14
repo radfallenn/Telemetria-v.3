@@ -60,7 +60,7 @@ jobs:
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
 
-      - name: Install exact Bridge from V4.08 APK
+      - name: Install automatic single Bridge
         run: node scripts/install-bridge-from-v408-apk.js
 
       - name: Validate final web package
@@ -68,10 +68,13 @@ jobs:
           test -s www/index.html
           test -s www/bridge-v408.js
           test -s www/telemetry-attributes.json
+          node --check www/bridge-v408.js
           node -e "JSON.parse(require('fs').readFileSync('www/telemetry-attributes.json','utf8'))"
           grep -q 'bridge-v408.js' www/index.html
           grep -q 'http://192.168.1.70:8788' www/bridge-v408.js
-          grep -q '192.168.1.71' www/bridge-v408.js
+          grep -q "const PS5 = '192.168.1.71'" www/bridge-v408.js
+          grep -q '__gt7BridgeControllerStarted' www/bridge-v408.js
+          test "$(grep -c '__gt7BridgeControllerStarted = true' www/bridge-v408.js)" -eq 1
           ! grep -q 'http://192.168.1.70:8787' www/index.html
           ! grep -q '192.168.1.68' www/index.html
 
@@ -96,10 +99,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.11-Bridge-APK-V408-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.12-Bridge-Automatica-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.11-Bridge-APK-V408
-          path: release/GT7-Telemetria-V4.11-Bridge-APK-V408-debug.apk
+          name: GT7-Telemetria-V4.12-Bridge-Automatica
+          path: release/GT7-Telemetria-V4.12-Bridge-Automatica-debug.apk
