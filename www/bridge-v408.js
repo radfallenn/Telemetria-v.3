@@ -1,23 +1,24 @@
-/* GT7 Telemetria - controlador unico e automatico da Bridge */
+/* GT7 Telemetria - conexão limpa, única e automática */
 (function(){
   'use strict';
 
-  if (window.__gt7BridgeControllerStarted) return;
-  window.__gt7BridgeControllerStarted = true;
+  if (window.__gt7CleanBridgeStarted) return;
+  window.__gt7CleanBridgeStarted = true;
 
   const BRIDGE = 'http://192.168.1.70:8788';
   const PS5 = '192.168.1.71';
   const q = id => document.getElementById(id);
 
-  let retryTimer = 0;
-  let busy = false;
+  let timer = 0;
+  let running = false;
   let failures = 0;
   let lastOkAt = 0;
   let lastLatency = 0;
-  let lastPayload = null;
-  let ps5Configured = false;
+  let lastData = null;
+  let activeEndpoint = '';
+  let lastError = '';
 
-  function setFixedConfiguration(){
+  function applyFixedConfig(){
     if (q('bridgeUrl')) q('bridgeUrl').value = BRIDGE;
     if (q('ps5Ip')) q('ps5Ip').value = PS5;
     localStorage.setItem('gt7_bridge_url', BRIDGE);
@@ -25,29 +26,39 @@
     localStorage.setItem('gt7_ps5_ip', PS5);
   }
 
-  function parsePayload(value){
+  function parse(value){
     if (typeof value === 'string') {
-      try { return JSON.parse(value); } catch { return {}; }
+      try { return JSON.parse(value); } catch (e) { throw new Error('JSON inválido'); }
     }
-    return value && typeof value === 'object' ? value : {};
+    if (!value || typeof value !== 'object') throw new Error('Resposta vazia');
+    return value;
   }
 
-  async function request(path, method = 'GET', data = null, timeout = 5000){
-    const url = BRIDGE + path;
-    const nativeHttp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp;
+  function nativePlugin(){
+    return window.CapacitorHttp ||
+      (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) ||
+      null;
+  }
 
-    if (nativeHttp && typeof nativeHttp.request === 'function') {
-      const response = await nativeHttp.request({
+  async function http(path, options = {}){
+    const method = options.method || 'GET';
+    const data = options.data || null;
+    const timeout = options.timeout || 4500;
+    const url = BRIDGE + path;
+    const plugin = nativePlugin();
+
+    if (plugin && typeof plugin.request === 'function') {
+      const response = await plugin.request({
         url,
         method,
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        data: method === 'GET' ? undefined : (data || {}),
+        data: method === 'GET' ? undefined : data,
         connectTimeout: timeout,
         readTimeout: timeout
       });
       const status = Number(response.status || 0);
-      if (status < 200 || status >= 300) throw new Error('HTTP ' + status + ' ' + path);
-      return parsePayload(response.data);
+      if (status < 200 || status >= 300) throw new Error('HTTP ' + status + ' em ' + path);
+      return parse(response.data);
     }
 
     const controller = new AbortController();
@@ -60,158 +71,167 @@
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: method === 'GET' ? undefined : JSON.stringify(data || {})
       });
-      if (!response.ok) throw new Error('HTTP ' + response.status + ' ' + path);
-      return parsePayload(await response.text());
+      if (!response.ok) throw new Error('HTTP ' + response.status + ' em ' + path);
+      return parse(await response.text());
+    } catch (error) {
+      if (error && error.name === 'AbortError') throw new Error('Timeout em ' + path);
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }
   }
 
-  async function readTelemetry(){
+  async function getTelemetry(){
     const endpoints = ['/api/live', '/api/fields'];
-    let lastError;
+    const errors = [];
     for (const endpoint of endpoints) {
       try {
-        const result = await request(endpoint, 'GET', null, 4500);
-        if (result && typeof result === 'object') return result;
+        const payload = await http(endpoint, { timeout: 4200 });
+        activeEndpoint = endpoint;
+        return payload;
       } catch (error) {
-        lastError = error;
+        errors.push(endpoint + ': ' + (error.message || error));
       }
     }
-    throw lastError || new Error('Bridge sem resposta');
+    throw new Error(errors.join(' | '));
   }
 
   function normalize(raw){
-    const root = parsePayload(raw);
+    const root = parse(raw);
     const live = root.live && typeof root.live === 'object' ? root.live : root;
     const session = root.session || root.active || live.session || {};
     return {
       ...live,
       session,
       connected: true,
-      decodeOk: live.decodeOk !== false
+      decodeOk: live.decodeOk !== false,
+      bridgeEndpoint: activeEndpoint,
+      bridgeUrl: BRIDGE,
+      ps5Ip: PS5
     };
   }
 
-  function setStatus(state, message){
-    const fresh = Date.now() - lastOkAt < 10000;
-    const connected = state === 'ok' || fresh;
-    const waiting = state === 'wait' && !connected;
+  function paint(state, detail){
+    const fresh = Date.now() - lastOkAt < 9000;
+    const ok = state === 'ok' || fresh;
+    const waiting = state === 'wait' && !ok;
 
-    if (q('topStatus')) q('topStatus').textContent = connected ? 'OK' : waiting ? '...' : 'OFF';
-    if (q('latency')) q('latency').textContent = connected ? lastLatency + 'ms' : '--ms';
+    if (q('topStatus')) q('topStatus').textContent = ok ? 'OK' : waiting ? '...' : 'OFF';
+    if (q('latency')) q('latency').textContent = ok ? lastLatency + 'ms' : '--ms';
     if (q('statusDot')) {
-      q('statusDot').style.background = connected ? 'var(--cyan)' : waiting ? '#ffb000' : '#555';
-      q('statusDot').style.boxShadow = connected ? '0 0 18px var(--cyan)' : 'none';
+      q('statusDot').style.background = ok ? 'var(--cyan)' : waiting ? '#ffb000' : '#555';
+      q('statusDot').style.boxShadow = ok ? '0 0 18px var(--cyan)' : 'none';
     }
     if (q('bridgeText')) {
-      q('bridgeText').textContent = connected
-        ? 'OK · GT7-UDP · 8788'
+      q('bridgeText').textContent = ok
+        ? 'OK · ' + (activeEndpoint || 'GT7-UDP') + ' · 8788'
         : waiting
           ? 'CONECTANDO AUTOMATICAMENTE · 8788'
-          : 'OFF · ' + (message || 'SEM RESPOSTA');
+          : 'OFF · ' + (detail || lastError || 'SEM RESPOSTA');
     }
   }
 
+  function writeDiagnostic(){
+    const raw = q('raw');
+    if (!raw) return;
+    const diagnostic = {
+      bridge: BRIDGE,
+      ps5: PS5,
+      endpoint: activeEndpoint || null,
+      connected: Date.now() - lastOkAt < 9000,
+      latencyMs: lastLatency || null,
+      failures,
+      lastError: lastError || null,
+      lastData
+    };
+    raw.textContent = JSON.stringify(diagnostic, null, 2);
+  }
+
   async function configurePs5(){
-    if (ps5Configured) return;
     const attempts = [
       ['/api/config', { ps5Ip: PS5 }],
       ['/api/settings', { ps5Ip: PS5 }],
       ['/api/ps5', { ip: PS5 }]
     ];
-    for (const [path, body] of attempts) {
-      try {
-        await request(path, 'POST', body, 3000);
-        ps5Configured = true;
-        return;
-      } catch {}
+    for (const [path, data] of attempts) {
+      try { await http(path, { method: 'POST', data, timeout: 2500 }); return true; } catch (_) {}
     }
+    return false;
   }
 
-  function stopLegacyPolling(){
-    try {
-      if (typeof timer !== 'undefined' && timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-    } catch {}
-    try {
-      if (window.__v4PersistentBridgeTimer) clearTimeout(window.__v4PersistentBridgeTimer);
-    } catch {}
+  function stopLegacy(){
+    try { if (typeof window.timer !== 'undefined' && window.timer) clearInterval(window.timer); } catch (_) {}
+    try { if (typeof timer !== 'undefined' && timer && timer !== window.__gt7CleanTimer) clearInterval(timer); } catch (_) {}
+    try { if (window.__v4PersistentBridgeTimer) clearTimeout(window.__v4PersistentBridgeTimer); } catch (_) {}
+    try { if (window.v4PersistentBridge && typeof window.v4PersistentBridge.stop === 'function') window.v4PersistentBridge.stop(); } catch (_) {}
   }
 
   async function tick(){
-    if (busy) return;
-    busy = true;
+    if (running || document.hidden) return;
+    running = true;
     const started = performance.now();
-
     try {
-      const raw = await readTelemetry();
+      const raw = await getTelemetry();
       const data = normalize(raw);
       lastLatency = Math.max(1, Math.round(performance.now() - started));
       lastOkAt = Date.now();
-      lastPayload = data;
+      lastData = data;
+      lastError = '';
       failures = 0;
 
       if (typeof window.render === 'function') {
-        try { window.render(data); } catch (error) { console.warn('Erro visual sem derrubar a Bridge:', error); }
+        try { window.render(data); } catch (error) { console.warn('Render não derrubou a Bridge:', error); }
       }
-
-      setStatus('ok');
-      configurePs5();
+      paint('ok');
+      if (!window.__gt7Ps5Configured) {
+        configurePs5().then(ok => { if (ok) window.__gt7Ps5Configured = true; });
+      }
     } catch (error) {
       failures += 1;
-      setStatus(failures < 5 ? 'wait' : 'off', error && error.message ? error.message : 'SEM RESPOSTA');
+      lastError = error && error.message ? error.message : String(error);
+      paint(failures < 4 ? 'wait' : 'off', lastError);
+      writeDiagnostic();
     } finally {
-      busy = false;
-      clearTimeout(retryTimer);
-      const delay = failures ? Math.min(3000, 700 + failures * 350) : 750;
-      retryTimer = setTimeout(tick, delay);
+      running = false;
+      clearTimeout(timer);
+      const delay = failures ? Math.min(3000, 900 + failures * 350) : 750;
+      timer = setTimeout(tick, delay);
+      window.__gt7CleanTimer = timer;
     }
   }
 
   async function command(path, data){
-    return request(path, 'POST', data || {}, 6000);
+    return http(path, { method: 'POST', data: data || {}, timeout: 6000 });
   }
 
   function start(){
-    setFixedConfiguration();
-    stopLegacyPolling();
-    clearTimeout(retryTimer);
+    applyFixedConfig();
+    stopLegacy();
+    clearTimeout(timer);
     failures = 0;
-    setStatus('wait');
+    lastError = '';
+    paint('wait');
     tick();
   }
 
   function bind(){
-    setFixedConfiguration();
-    stopLegacyPolling();
+    applyFixedConfig();
+    stopLegacy();
 
     if (q('connectBtn')) q('connectBtn').onclick = start;
-    if (q('startSection')) q('startSection').onclick = async () => {
-      await command('/api/session/start', { name: 'Nova seção' });
-      tick();
-    };
+    if (q('startSection')) q('startSection').onclick = async () => { await command('/api/session/start', { name: 'Nova seção' }); tick(); };
     if (q('saveSection')) q('saveSection').onclick = async () => {
       const name = prompt('Nome da seção:', 'Seção ' + new Date().toLocaleString('pt-BR'));
-      if (name !== null) {
-        await command('/api/session/finish', { name });
-        tick();
-      }
+      if (name !== null) { await command('/api/session/finish', { name }); tick(); }
     };
-    if (q('resetSection')) q('resetSection').onclick = async () => {
-      await command('/api/reset', {});
-      tick();
-    };
+    if (q('resetSection')) q('resetSection').onclick = async () => { await command('/api/reset', {}); tick(); };
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) start();
+      if (document.hidden) clearTimeout(timer);
+      else start();
     });
     window.addEventListener('online', start);
-    window.addEventListener('focus', () => {
-      if (Date.now() - lastOkAt > 3000) start();
-    });
+    window.addEventListener('focus', start);
 
     start();
   }
@@ -219,15 +239,15 @@
   window.gt7Bridge = {
     start,
     tick,
-    request,
-    get connected(){ return Date.now() - lastOkAt < 10000; },
-    get lastData(){ return lastPayload; }
+    request: http,
+    command,
+    get connected(){ return Date.now() - lastOkAt < 9000; },
+    get lastData(){ return lastData; },
+    get lastError(){ return lastError; },
+    get endpoint(){ return activeEndpoint; }
   };
   window.api = command;
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bind, { once: true });
-  } else {
-    setTimeout(bind, 0);
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true });
+  else setTimeout(bind, 0);
 })();
