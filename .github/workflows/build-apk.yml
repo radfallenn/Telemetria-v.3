@@ -47,6 +47,8 @@ jobs:
         run: node scripts/patch-v4-remove-designer-expand-attributes.js
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
+      - name: Apply persistent Bridge controller last
+        run: node scripts/patch-v4-persistent-bridge-owner.js
       - name: Validate final web package
         run: |
           test -f www/telemetry-attributes.json
@@ -55,6 +57,7 @@ jobs:
           ! grep -qi 'id="designerBtn"' www/index.html
           grep -q "telemetry-attributes.json" www/index.html
           grep -q "V4 ATTRIBUTE CHECKBOX TO DASHBOARD" www/index.html
+          grep -q "V4 PERSISTENT BRIDGE SINGLE OWNER" www/index.html
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -70,9 +73,9 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.07-Checks-Atributos-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.08-Bridge-Persistente-debug.apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.07-Checks-Atributos
-          path: release/GT7-Telemetria-V4.07-Checks-Atributos-debug.apk
+          name: GT7-Telemetria-V4.08-Bridge-Persistente
+          path: release/GT7-Telemetria-V4.08-Bridge-Persistente-debug.apk
