@@ -3,7 +3,26 @@ const path=require('path');
 const file=path.join(__dirname,'..','www','index.html');
 let html=fs.readFileSync(file,'utf8');
 const MARK='V4 PERSISTENT BRIDGE SINGLE OWNER';
-if(html.includes(MARK)){console.log('JA OK:',MARK);process.exit(0)}
+
+// Remove fisicamente todos os controladores de Bridge adicionados por patches anteriores.
+const oldMarkers=[
+ 'V4 FIXED NETWORK 8788 PS5 71',
+ 'V4 PERSISTENT BRIDGE SINGLE OWNER',
+ 'V4 BRIDGE AUDIT SINGLE NATIVE CONTROLLER'
+];
+for(const marker of oldMarkers){
+ const escaped=marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+ const re=new RegExp('<script>[\\s\\S]*?\\/\\* '+escaped+' \\*\\/[\\s\\S]*?<\\/script>','g');
+ html=html.replace(re,'');
+}
+
+// Elimina definitivamente as configurações antigas do HTML final.
+html=html.replaceAll('http://192.168.1.70:8787','http://192.168.1.70:8788');
+html=html.replaceAll('192.168.1.68','192.168.1.71');
+
+// Remove a inicialização legada para impedir polling concorrente.
+html=html.replace(/\$\('bridgeUrl'\)\.value=localStorage\.getItem\('gt7_bridge_url'\)[\s\S]*?timer=setInterval\(poll,700\);/,
+  "$ ('bridgeUrl')".replace(' ','')+".value='http://192.168.1.70:8788';$('ps5Ip').value='192.168.1.71';renderSegments(0);renderFuel(0);");
 
 const code=`
 <script>
@@ -80,10 +99,9 @@ const code=`
  }
  function start(){
   fixedInputs();
-  // Desativa o temporizador legado quando ele ainda estiver acessível.
   try{if(typeof timer!=='undefined'&&timer){clearInterval(timer);timer=null}}catch{}
-  try{if(window.__v4PersistentBridgeTimer)clearTimeout(window.__v4PersistentBridgeTimer)}catch{}
-  stopped=false;paint(false,true);tick();
+  clearTimeout(retryTimer);
+  stopped=false;failures=0;paint(false,true);tick();
  }
  function bind(){
   fixedInputs();
@@ -95,12 +113,17 @@ const code=`
   window.addEventListener('online',()=>{clearTimeout(retryTimer);tick()});
   start();
  }
- // Impede que renders antigos deixem o indicador OFF depois de uma resposta válida.
  const statusGuard=setInterval(()=>{if(Date.now()-lastOk<7000)paint(true,false,'GT7-UDP')},500);
  window.v4PersistentBridge={start,tick,stop(){stopped=true;clearTimeout(retryTimer);clearInterval(statusGuard)},get lastData(){return lastData}};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else setTimeout(bind,0);
 })();
 </script>`;
+
 html=html.replace('</body>',code+'\n</body>');
+
+if(html.includes('http://192.168.1.70:8787'))throw new Error('Porta antiga 8787 ainda presente');
+if(html.includes('192.168.1.68'))throw new Error('IP antigo do PS5 ainda presente');
+if((html.match(/V4 PERSISTENT BRIDGE SINGLE OWNER/g)||[]).length!==1)throw new Error('Controlador persistente duplicado');
+
 fs.writeFileSync(file,html);
-console.log('Controlador único e persistente da Bridge aplicado.');
+console.log('Configuração da Bridge V4.08 restaurada: 8788 / PS5 192.168.1.71 / controlador único.');
