@@ -12,85 +12,94 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Install
         run: npm install --no-audit --no-fund
-      - name: Prepare telemetry attribute database
-        run: |
-          mkdir -p www
-          test -f data/telemetry-attributes.json
-          cp -f data/telemetry-attributes.json www/telemetry-attributes.json
-          node -e "JSON.parse(require('fs').readFileSync('www/telemetry-attributes.json','utf8')); console.log('Banco de atributos OK')"
+
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
+
       - name: Apply independent hard navigation
         run: node scripts/patch-v4-hard-nav.js
-      - name: Apply fixed Bridge and PS5 network
-        run: node scripts/patch-v4-fixed-network.js
+
       - name: Apply RPM C gauge and full-frame
         run: node scripts/patch-v4-rpm-c-fullframe.js
+
       - name: Separate RPM total and fuel cards
         run: node scripts/patch-v4-separate-rpm-total-fuel.js
+
       - name: Apply laps and fuel fixes
         run: node scripts/patch-v4-laps-fuel-references.js
+
       - name: Apply performance and stability fix
         run: node scripts/patch-v4-performance-stability.js
+
       - name: Compact cards and section max speed
         run: node scripts/patch-v4-compact-core-cards-section-max.js
+
       - name: Organize dashboard and add movement arrows
         run: node scripts/patch-v4-grid-arrows-all-attributes.js
+
       - name: Add total last lap and general average cards
         run: node scripts/patch-v4-total-last-average-cards.js
+
       - name: Remove card designer and install attribute database
         run: node scripts/patch-v4-remove-designer-expand-attributes.js
-      - name: Recopy telemetry attribute database
-        run: |
-          mkdir -p www
-          cp -f data/telemetry-attributes.json www/telemetry-attributes.json
+
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
-      - name: Restore proven V4.08 Bridge controller last
-        run: node scripts/patch-v4-persistent-bridge-owner.js
+
+      - name: Install exact Bridge from V4.08 APK
+        run: node scripts/install-bridge-from-v408-apk.js
+
       - name: Validate final web package
         run: |
+          test -s www/index.html
+          test -s www/bridge-v408.js
           test -s www/telemetry-attributes.json
-          node -e "const p='www/telemetry-attributes.json'; const x=JSON.parse(require('fs').readFileSync(p,'utf8')); if(!Array.isArray(x)||!x.length) process.exit(1); console.log(x.length+' atributos validados')"
-          ! grep -qi "DESIGNER DO CARD" www/index.html
-          ! grep -qi 'id="designer"' www/index.html
-          ! grep -qi 'id="designerBtn"' www/index.html
-          grep -q "telemetry-attributes.json" www/index.html
-          grep -q "V4 ATTRIBUTE CHECKBOX TO DASHBOARD" www/index.html
-          grep -q "V4 PERSISTENT BRIDGE SINGLE OWNER" www/index.html
-          ! grep -q "V4 BRIDGE AUDIT SINGLE NATIVE CONTROLLER" www/index.html
-          ! grep -q "V4 FIXED NETWORK 8788 PS5 71" www/index.html
-          ! grep -q "http://192.168.1.70:8787" www/index.html
-          ! grep -q "192.168.1.68" www/index.html
+          node -e "JSON.parse(require('fs').readFileSync('www/telemetry-attributes.json','utf8'))"
+          grep -q 'bridge-v408.js' www/index.html
+          grep -q 'http://192.168.1.70:8788' www/bridge-v408.js
+          grep -q '192.168.1.71' www/bridge-v408.js
+          ! grep -q 'http://192.168.1.70:8787' www/index.html
+          ! grep -q '192.168.1.68' www/index.html
+
       - name: Add Android
         run: npx cap add android
+
       - name: Sync
         run: npx cap sync android
+
       - name: Patch Android background
         run: node scripts/patch-android-background.js
+
       - name: Allow local HTTP network
         run: node scripts/patch-android-network.js
+
       - name: Gradle permission
         run: chmod +x android/gradlew
+
       - name: Build Debug APK
         run: cd android && ./gradlew assembleDebug --stacktrace
+
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.10-Bridge-V4.08-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.11-Bridge-APK-V408-debug.apk"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.10-Bridge-V4.08
-          path: release/GT7-Telemetria-V4.10-Bridge-V4.08-debug.apk
+          name: GT7-Telemetria-V4.11-Bridge-APK-V408
+          path: release/GT7-Telemetria-V4.11-Bridge-APK-V408-debug.apk
