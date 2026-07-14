@@ -84,11 +84,20 @@ jobs:
       - name: Sync
         run: npx cap sync android
 
-      - name: Patch Android background
-        run: node scripts/patch-android-background.js
-
       - name: Allow local HTTP network
         run: node scripts/patch-android-network.js
+
+      - name: Validate no background services or extra permissions
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          ! grep -q 'TelemetryForegroundService' "$MANIFEST"
+          ! grep -q 'TelemetryBootReceiver' "$MANIFEST"
+          ! grep -q 'android.permission.WAKE_LOCK' "$MANIFEST"
+          ! grep -q 'android.permission.FOREGROUND_SERVICE' "$MANIFEST"
+          ! grep -q 'android.permission.FOREGROUND_SERVICE_DATA_SYNC' "$MANIFEST"
+          ! grep -q 'android.permission.POST_NOTIFICATIONS' "$MANIFEST"
+          ! grep -q 'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' "$MANIFEST"
+          ! grep -q 'android.permission.RECEIVE_BOOT_COMPLETED' "$MANIFEST"
 
       - name: Gradle permission
         run: chmod +x android/gradlew
@@ -99,10 +108,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.12-Bridge-Automatica-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.13-Sem-Segundo-Plano-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.12-Bridge-Automatica
-          path: release/GT7-Telemetria-V4.12-Bridge-Automatica-debug.apk
+          name: GT7-Telemetria-V4.13-Sem-Segundo-Plano
+          path: release/GT7-Telemetria-V4.13-Sem-Segundo-Plano-debug.apk
