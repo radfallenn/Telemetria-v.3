@@ -33,14 +33,8 @@ jobs:
         run: node scripts/patch-v4-rpm-c-fullframe.js
       - name: Separate RPM total and fuel cards
         run: node scripts/patch-v4-separate-rpm-total-fuel.js
-      - name: Add custom item builder with three slots
-        run: node scripts/patch-v4-custom-items-3-slots.js
-      - name: Apply laps fuel and reference fixes
+      - name: Apply laps and fuel fixes
         run: node scripts/patch-v4-laps-fuel-references.js
-      - name: Apply designer editing and scroll fixes
-        run: node scripts/patch-v4-designer-edit-scroll-dashboard.js
-      - name: Apply final total builder layout and font fixes
-        run: node scripts/patch-v4-total-builder-layout-fonts.js
       - name: Apply performance and stability fix
         run: node scripts/patch-v4-performance-stability.js
       - name: Compact cards and section max speed
@@ -49,8 +43,15 @@ jobs:
         run: node scripts/patch-v4-grid-arrows-all-attributes.js
       - name: Add total last lap and general average cards
         run: node scripts/patch-v4-total-last-average-cards.js
-      - name: Remove card designer and expand telemetry attributes
+      - name: Remove card designer and install attribute database
         run: node scripts/patch-v4-remove-designer-expand-attributes.js
+      - name: Validate final web package
+        run: |
+          test -f www/telemetry-attributes.json
+          ! grep -qi "DESIGNER DO CARD" www/index.html
+          ! grep -qi 'id="designer"' www/index.html
+          ! grep -qi 'id="designerBtn"' www/index.html
+          grep -q "telemetry-attributes.json" www/index.html
       - name: Add Android
         run: npx cap add android
       - name: Sync
@@ -66,9 +67,9 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.05-Atributos-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.06-Atributos-Sem-Designer-debug.apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.05-Atributos
-          path: release/GT7-Telemetria-V4.05-Atributos-debug.apk
+          name: GT7-Telemetria-V4.06-Atributos-Sem-Designer
+          path: release/GT7-Telemetria-V4.06-Atributos-Sem-Designer-debug.apk
