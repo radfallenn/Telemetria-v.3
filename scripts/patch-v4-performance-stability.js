@@ -12,8 +12,19 @@ if (html.includes(MARK)) {
 
 let changes = 0;
 
-// O patch de referencias reconstruia toda a grade em todos os frames.
-html = html.replace(
+function replaceOnce(pattern, replacement, label) {
+  const before = html;
+  html = html.replace(pattern, replacement);
+  if (html !== before) {
+    changes++;
+    console.log('OK:', label);
+  } else {
+    console.log('IGNORADO (ausente ou ja removido):', label);
+  }
+}
+
+// Compatibilidade com builds antigos que ainda possuem a grade de referencias.
+replaceOnce(
   /function loop\(\)\{\s*installRenderWrapper\(\);\s*ensureReferences\(\);\s*renderReferences\(\);\s*requestAnimationFrame\(loop\);\s*\}\s*if\(document\.readyState==='loading'\) document\.addEventListener\('DOMContentLoaded',\(\)=>requestAnimationFrame\(loop\)\);\s*else requestAnimationFrame\(loop\);/,
   `function initReferenceUpdates(){
     installRenderWrapper();
@@ -27,12 +38,12 @@ html = html.replace(
     }
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initReferenceUpdates,{once:true});
-  else setTimeout(initReferenceUpdates,0);`
+  else setTimeout(initReferenceUpdates,0);`,
+  'loop de referencias'
 );
-if (html.includes('function initReferenceUpdates()')) changes++;
 
-// O patch final de layout lia storage, percorria o DOM e recalculava CSS em todos os frames.
-html = html.replace(
+// Compatibilidade com builds antigos que ainda possuem Designer/criador de cards.
+replaceOnce(
   /function loop\(\)\{\s*installRender\(\);\s*normalizeBuilder\(\);\s*ensureFontControl\(\);\s*rebindHeightControls\(\);\s*applyDashboardControls\(\);\s*requestAnimationFrame\(loop\);\s*\}\s*if\(document\.readyState==='loading'\)document\.addEventListener\('DOMContentLoaded',\(\)=>requestAnimationFrame\(loop\)\);\s*else requestAnimationFrame\(loop\);/,
   `function initUiControls(){
     installRender();
@@ -40,7 +51,6 @@ html = html.replace(
     ensureFontControl();
     rebindHeightControls();
     applyDashboardControls();
-
     if(!window.__v4UiMaintenanceTimer){
       window.__v4UiMaintenanceTimer=setInterval(()=>{
         const designer=document.getElementById('designer');
@@ -56,12 +66,12 @@ html = html.replace(
     }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUiControls,{once:true});
-  else setTimeout(initUiControls,0);`
+  else setTimeout(initUiControls,0);`,
+  'loop do Designer'
 );
-if (html.includes('function initUiControls()')) changes++;
 
-// Evita mais de um observer do Designer quando a inicializacao for repetida.
-html = html.replace(
+// Compatibilidade com builds antigos que ainda possuem lista de campos.
+replaceOnce(
   /const observer=new MutationObserver\(\(\)=>\{decorateFields\(\);applyDashboardSizes\(\)\}\);\s*if\(q\('fieldsList'\)\)observer\.observe\(q\('fieldsList'\),\{childList:true,subtree:false\}\);/,
   `if(!window.__v4FieldsObserver&&q('fieldsList')){
       let pending=false;
@@ -71,16 +81,22 @@ html = html.replace(
         setTimeout(()=>{pending=false;decorateFields();applyDashboardSizes()},80);
       });
       window.__v4FieldsObserver.observe(q('fieldsList'),{childList:true,subtree:false});
-    }`
+    }`,
+  'observer da lista de campos'
 );
-if (html.includes('window.__v4FieldsObserver')) changes++;
 
-// Marca e aplica pequenas protecoes de renderizacao.
-html = html.replace('</style>', `
+// Protecoes gerais validas tanto no build antigo quanto no build sem Designer.
+if (html.includes('</style>')) {
+  html = html.replace('</style>', `
 /* ${MARK} */
 html.v4-low-motion *,html.v4-low-motion *::before,html.v4-low-motion *::after{animation-duration:.2s!important;transition-duration:.12s!important}
 </style>`);
-html = html.replace('</body>', `<script>
+} else {
+  throw new Error('index.html sem fechamento </style>');
+}
+
+if (html.includes('</body>')) {
+  html = html.replace('</body>', `<script>
 /* ${MARK} JS */
 (function(){
   document.documentElement.classList.add('v4-performance-fixed');
@@ -89,10 +105,9 @@ html = html.replace('</body>', `<script>
   });
 })();
 </script>\n</body>`);
-
-if (changes < 2) {
-  throw new Error('Patch de desempenho incompleto: apenas '+changes+' trechos corrigidos');
+} else {
+  throw new Error('index.html sem fechamento </body>');
 }
 
 fs.writeFileSync(file, html);
-console.log('Desempenho corrigido: loops pesados removidos e observers limitados.');
+console.log('Desempenho protegido. Trechos antigos corrigidos:', changes, '(0 e valido no build sem Designer).');
