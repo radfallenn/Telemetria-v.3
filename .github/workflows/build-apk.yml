@@ -23,6 +23,12 @@ jobs:
           node-version: '22'
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Prepare telemetry attribute database
+        run: |
+          mkdir -p www
+          test -f data/telemetry-attributes.json
+          cp -f data/telemetry-attributes.json www/telemetry-attributes.json
+          node -e "JSON.parse(require('fs').readFileSync('www/telemetry-attributes.json','utf8')); console.log('Banco de atributos OK')"
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
       - name: Apply independent hard navigation
@@ -45,13 +51,18 @@ jobs:
         run: node scripts/patch-v4-total-last-average-cards.js
       - name: Remove card designer and install attribute database
         run: node scripts/patch-v4-remove-designer-expand-attributes.js
+      - name: Recopy telemetry attribute database
+        run: |
+          mkdir -p www
+          cp -f data/telemetry-attributes.json www/telemetry-attributes.json
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
       - name: Restore proven V4.08 Bridge controller last
         run: node scripts/patch-v4-persistent-bridge-owner.js
       - name: Validate final web package
         run: |
-          test -f www/telemetry-attributes.json
+          test -s www/telemetry-attributes.json
+          node -e "const p='www/telemetry-attributes.json'; const x=JSON.parse(require('fs').readFileSync(p,'utf8')); if(!Array.isArray(x)||!x.length) process.exit(1); console.log(x.length+' atributos validados')"
           ! grep -qi "DESIGNER DO CARD" www/index.html
           ! grep -qi 'id="designer"' www/index.html
           ! grep -qi 'id="designerBtn"' www/index.html
