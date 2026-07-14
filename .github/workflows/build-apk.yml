@@ -88,10 +88,15 @@ jobs:
       - name: Allow local HTTP network
         run: node scripts/patch-android-network.js
 
-      - name: Validate minimal Android permissions
+      - name: Enable Android 16 local network access
+        run: node scripts/patch-android-local-network-permission.js
+
+      - name: Validate Android permissions
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_NETWORK_STATE' "$MANIFEST"
+          grep -q 'android.permission.NEARBY_WIFI_DEVICES' "$MANIFEST"
           ! grep -q 'TelemetryForegroundService' "$MANIFEST"
           ! grep -q 'TelemetryBootReceiver' "$MANIFEST"
           ! grep -q 'android.permission.WAKE_LOCK' "$MANIFEST"
@@ -109,10 +114,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.14-Conexao-Limpa-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.15-Rede-Local-Android16-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.14-Conexao-Limpa
-          path: release/GT7-Telemetria-V4.14-Conexao-Limpa-debug.apk
+          name: GT7-Telemetria-V4.15-Rede-Local-Android16
+          path: release/GT7-Telemetria-V4.15-Rede-Local-Android16-debug.apk
