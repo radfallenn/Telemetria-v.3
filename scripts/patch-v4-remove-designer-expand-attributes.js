@@ -19,8 +19,10 @@ function removeElementById(source,id){
   let depth=0,end=-1,token;
   while((token=tokenRe.exec(source))){
     const text=token[0];
-    if(/^<\\//.test(text))depth--;
-    else if(!/\\/>$/.test(text))depth++;
+    const closing=text.startsWith('</');
+    const selfClosing=text.endsWith('/>');
+    if(closing)depth--;
+    else if(!selfClosing)depth++;
     if(depth===0){end=tokenRe.lastIndex;break;}
   }
   return end>start?source.slice(0,start)+source.slice(end):source;
