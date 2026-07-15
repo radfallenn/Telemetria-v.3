@@ -63,7 +63,10 @@ jobs:
       - name: Install clean automatic Bridge
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Validate clean connection package
+      - name: Map all Bridge telemetry fields
+        run: node scripts/patch-v4-bridge-field-mapping.js
+
+      - name: Validate clean connection and field mapping
         run: |
           test -s www/index.html
           test -s www/bridge-v408.js
@@ -74,6 +77,9 @@ jobs:
           grep -q 'http://192.168.1.70:8788' www/bridge-v408.js
           grep -q "const PS5 = '192.168.1.71'" www/bridge-v408.js
           grep -q '__gt7CleanBridgeStarted' www/bridge-v408.js
+          grep -q 'GT7 BRIDGE FIELD MAPPING V2' www/bridge-v408.js
+          grep -q 'car.speedKmh' www/bridge-v408.js
+          grep -q 'input.throttlePct' www/bridge-v408.js
           test "$(grep -c '__gt7CleanBridgeStarted = true' www/bridge-v408.js)" -eq 1
           test "$(grep -o 'bridge-v408.js' www/index.html | wc -l)" -eq 1
           ! grep -q 'http://192.168.1.70:8787' www/index.html
@@ -114,10 +120,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.15-Rede-Local-Android16-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.16-Leitor-Bridge-Completo-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.15-Rede-Local-Android16
-          path: release/GT7-Telemetria-V4.15-Rede-Local-Android16-debug.apk
+          name: GT7-Telemetria-V4.16-Leitor-Bridge-Completo
+          path: release/GT7-Telemetria-V4.16-Leitor-Bridge-Completo-debug.apk
