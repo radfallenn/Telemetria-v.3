@@ -60,10 +60,13 @@ jobs:
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
 
+      - name: Remove ATRIB page and marked dashboard cards
+        run: node scripts/patch-v4-remove-attributes-and-marked-cards.js
+
       - name: Install GT7 Bridge reader and diagnostics
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Validate GT7 communication package
+      - name: Validate GT7 communication and simplified UI
         run: |
           set -euo pipefail
           test -s www/index.html
@@ -77,10 +80,8 @@ jobs:
           const attrs=JSON.parse(fs.readFileSync('www/telemetry-attributes.json','utf8'));
           const ok=(v,m)=>{if(!v)throw new Error(m);console.log('OK:',m)};
           const ids=new Set(Array.isArray(attrs)?attrs.map(a=>a&&a.id).filter(Boolean):[]);
-          ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos disponíveis`);
-          for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs']) {
-            ok(ids.has(id),`atributo essencial presente: ${id}`);
-          }
+          ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos disponíveis no banco`);
+          for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo essencial presente: ${id}`);
           ok((index.match(/bridge-v408\.js/g)||[]).length===1,'uma única Bridge no HTML');
           ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão 192.168.1.81');
           ok(bridge.includes("message: 'A'"),'heartbeat GT7 tipo A documentado');
@@ -89,6 +90,9 @@ jobs:
           ok(bridge.includes('function adapt(raw)'),'adaptador V4.08 instalado');
           ok(bridge.includes('telemetryReceiving'),'diagnóstico de pacotes instalado');
           ok(bridge.includes('setPs5Ip:savePs5Ip'),'IP do PS5 editável');
+          ok(!/id=["']attributes["']/.test(index),'página ATRIB removida');
+          ok(!/data-page=["']attributes["']/.test(index),'botão ATRIB removido');
+          ok(index.includes('V4 REMOVE ATTRIBUTES PAGE AND MARKED CARDS'),'limpeza final instalada');
           ok(!index.includes('192.168.1.71'),'IP antigo removido');
           NODE
 
@@ -120,10 +124,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.17-Diagnostico-UDP-PS5-81-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.18-Sem-Atributos-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.17-Diagnostico-UDP-PS5-81
-          path: release/GT7-Telemetria-V4.17-Diagnostico-UDP-PS5-81-debug.apk
+          name: GT7-Telemetria-V4.18-Sem-Atributos
+          path: release/GT7-Telemetria-V4.18-Sem-Atributos-debug.apk
