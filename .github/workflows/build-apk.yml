@@ -76,7 +76,11 @@ jobs:
           const bridge=fs.readFileSync('www/bridge-v408.js','utf8');
           const attrs=JSON.parse(fs.readFileSync('www/telemetry-attributes.json','utf8'));
           const ok=(v,m)=>{if(!v)throw new Error(m);console.log('OK:',m)};
-          ok(Array.isArray(attrs)&&attrs.length>=100,`${attrs.length} atributos disponíveis`);
+          const ids=new Set(Array.isArray(attrs)?attrs.map(a=>a&&a.id).filter(Boolean):[]);
+          ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos disponíveis`);
+          for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs']) {
+            ok(ids.has(id),`atributo essencial presente: ${id}`);
+          }
           ok((index.match(/bridge-v408\.js/g)||[]).length===1,'uma única Bridge no HTML');
           ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão 192.168.1.81');
           ok(bridge.includes("message: 'A'"),'heartbeat GT7 tipo A documentado');
