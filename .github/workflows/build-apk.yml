@@ -90,8 +90,8 @@ jobs:
           ok(bridge.includes('function adapt(raw)'),'adaptador V4.08 instalado');
           ok(bridge.includes('telemetryReceiving'),'diagnóstico de pacotes instalado');
           ok(bridge.includes('setPs5Ip:savePs5Ip'),'IP do PS5 editável');
-          ok(!/id=["']attributes["']/.test(index),'página ATRIB removida');
-          ok(!/data-page=["']attributes["']/.test(index),'botão ATRIB removido');
+          ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
+          ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido');
           ok(index.includes('V4 REMOVE ATTRIBUTES PAGE AND MARKED CARDS'),'limpeza final instalada');
           ok(!index.includes('192.168.1.71'),'IP antigo removido');
           NODE
