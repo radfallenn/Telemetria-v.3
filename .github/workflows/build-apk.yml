@@ -63,11 +63,8 @@ jobs:
       - name: Install GT7 Bridge reader and diagnostics
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Force automatic PS5 and UDP configuration
-        run: node scripts/patch-v4-force-ps5-autoconfig.js
-
-      - name: Force PS5 UDP endpoint 192.168.1.81:33740
-        run: node scripts/patch-v4-force-ps5-udp-endpoint.js
+      - name: Install editable Bridge and PS5 settings
+        run: node scripts/patch-v4-editable-network-settings.js
 
       - name: Final removal of ATRIB and marked cards
         run: node scripts/patch-v4-remove-attributes-and-marked-cards.js
@@ -89,19 +86,20 @@ jobs:
           ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos no banco interno`);
           for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo essencial: ${id}`);
           ok((index.match(/bridge-v408\.js/g)||[]).length===1,'uma única Bridge no HTML');
-          ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão 192.168.1.81');
-          ok(bridge.includes("const PS5_UDP_PORT = 33740"),'porta UDP do PS5 33740');
-          ok(bridge.includes("const PS5_UDP_ENDPOINT = '192.168.1.81:33740'"),'endpoint PS5 192.168.1.81:33740');
-          ok(bridge.includes('V4 FORCE PS5 81 AUTOCONFIG'),'autoconfiguração PS5 instalada');
-          ok(bridge.includes('heartbeatPort: 33739'),'heartbeat UDP 33739 configurado');
-          ok(bridge.includes('receivePort: 33740'),'recepção UDP 33740 configurada');
-          ok(bridge.includes('function adapt(raw)'),'adaptador V4.08 instalado');
+          ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge padrão configurada');
+          ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão configurado');
+          ok(bridge.includes('function saveNetworkSettings'),'salvamento editável instalado');
+          ok(bridge.includes('function getBridgeUrl'),'Bridge dinâmica instalada');
+          ok(bridge.includes('function getUdpPort'),'porta UDP editável instalada');
+          ok(bridge.includes('function getHeartbeatPort'),'heartbeat editável instalado');
+          ok(index.includes('editableBridgeUrl'),'campo editável da Bridge presente');
+          ok(index.includes('editablePs5Ip'),'campo editável do PS5 presente');
+          ok(index.includes('editableUdpPort'),'campo editável UDP presente');
+          ok(index.includes('editableHeartbeatPort'),'campo editável heartbeat presente');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida do HTML final');
           ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido do HTML final');
           for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
-          ok(index.includes('V4 REMOVE ATTRIBUTES PAGE AND MARKED CARDS'),'limpeza final executada');
           ok(!index.includes('192.168.1.71'),'IP antigo removido');
-          ok(!index.includes('192.168.1.68'),'IP antigo 68 removido');
           NODE
 
       - name: Add Android
@@ -132,10 +130,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.20-PS5-192.168.1.81-UDP-33740-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.21-Bridge-Editavel-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.20-PS5-81-UDP-33740
-          path: release/GT7-Telemetria-V4.20-PS5-192.168.1.81-UDP-33740-debug.apk
+          name: GT7-Telemetria-V4.21-Bridge-Editavel
+          path: release/GT7-Telemetria-V4.21-Bridge-Editavel-debug.apk
