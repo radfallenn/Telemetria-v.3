@@ -16,9 +16,9 @@ function removeBalancedElementByAttr(source, attr, value){
   token.lastIndex=pos;
   let current;
   while((current=token.exec(source))){
-    const text=current[0];
-    if(text.startsWith('</')) depth--;
-    else if(!text.endsWith('/>')) depth++;
+    const text=current[0].trim();
+    if(text.startsWith('</'))depth--;
+    else if(!text.endsWith('/>'))depth++;
     if(depth===0)return source.slice(0,match.index)+source.slice(token.lastIndex);
   }
   throw new Error('Elemento não balanceado: '+attr+'='+value);
@@ -29,7 +29,7 @@ for(const field of ['rpmtotal','tyres'])html=removeBalancedElementByAttr(html,'d
 
 // Página ATRIB completa e botão da navegação.
 html=removeBalancedElementByAttr(html,'id','attributes');
-html=html.replace(/<button[^>]*data-page=["']attributes["'][^>]*>[\s\S]*?<\/button>/ig,'');
+html=html.replace(/<button\b[^>]*data-page=["']attributes["'][^>]*>[\s\S]*?<\/button>/ig,'');
 
 // Não chamar mais o renderizador da página excluída.
 html=html.replace(/;?renderAttrs\(d\)/g,'');
@@ -42,7 +42,8 @@ html=html.replace('</style>',css+'\n</style>');
 const cleanup=`<script>\n/* ${MARK} RUNTIME */\n(function(){\n const forbidden=new Set(['rpmtotal','tyres','last','total']);\n function clean(){\n  document.getElementById('attributes')?.remove();\n  document.querySelector('[data-page="attributes"]')?.remove();\n  document.querySelectorAll('[data-field]').forEach(el=>{if(forbidden.has(el.dataset.field))el.remove()});\n  document.querySelector('.nav')?.style.setProperty('grid-template-columns','repeat(5,1fr)','important');\n }\n if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',clean,{once:true});else clean();\n const observer=new MutationObserver(clean);\n const start=()=>observer.observe(document.body,{childList:true,subtree:true});\n if(document.body)start();else document.addEventListener('DOMContentLoaded',start,{once:true});\n})();\n</script>`;
 html=html.replace('</body>',cleanup+'\n</body>');
 
-if(html.includes('data-page="attributes"')||html.includes("data-page='attributes'"))throw new Error('Botão ATRIB ainda presente');
-if(/id=["']attributes["']/.test(html))throw new Error('Página ATRIB ainda presente');
+// Valida apenas elementos HTML reais; referências dentro do script de limpeza são permitidas.
+if(/<button\b[^>]*data-page=["']attributes["']/i.test(html))throw new Error('Botão ATRIB ainda presente');
+if(/<section\b[^>]*id=["']attributes["']/i.test(html))throw new Error('Página ATRIB ainda presente');
 fs.writeFileSync(file,html);
 console.log('Página ATRIB e cards marcados removidos definitivamente.');
