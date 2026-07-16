@@ -16,7 +16,9 @@ function removeBalancedElementByAttr(source, attr, value){
   token.lastIndex=pos;
   let current;
   while((current=token.exec(source))){
-    if(/^<\\//.test(current[0]))depth--;else if(!/\\/>$/.test(current[0]))depth++;
+    const text=current[0];
+    if(text.startsWith('</')) depth--;
+    else if(!text.endsWith('/>')) depth++;
     if(depth===0)return source.slice(0,match.index)+source.slice(token.lastIndex);
   }
   throw new Error('Elemento não balanceado: '+attr+'='+value);
@@ -27,11 +29,11 @@ for(const field of ['rpmtotal','tyres'])html=removeBalancedElementByAttr(html,'d
 
 // Página ATRIB completa e botão da navegação.
 html=removeBalancedElementByAttr(html,'id','attributes');
-html=html.replace(/<button[^>]*data-page=["']attributes["'][^>]*>[\\s\\S]*?<\\/button>/ig,'');
+html=html.replace(/<button[^>]*data-page=["']attributes["'][^>]*>[\s\S]*?<\/button>/ig,'');
 
 // Não chamar mais o renderizador da página excluída.
-html=html.replace(/;?renderAttrs\\(d\\)/g,'');
-html=html.replace(/function renderAttrs\\(d\\)\\{[\\s\\S]*?\\}(?=\\s*async function poll)/,'function renderAttrs(){return}');
+html=html.replace(/;?renderAttrs\(d\)/g,'');
+html=html.replace(/function renderAttrs\(d\)\{[\s\S]*?\}(?=\s*async function poll)/,'function renderAttrs(){return}');
 
 // Retira RPM/Tempo Total, pneus, Última volta e Tempo total caso scripts antigos os recriem.
 const css=`\n/* ${MARK} */\n.nav{grid-template-columns:repeat(5,1fr)!important}\n[data-field="rpmtotal"],[data-field="tyres"],[data-field="last"],[data-field="total"]{display:none!important}\n`;
