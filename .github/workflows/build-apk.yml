@@ -40,6 +40,8 @@ jobs:
           ! grep -Fq "hb=dgram.createSocket('udp4')" bridge/server.js
           ! grep -Fq "hb.send(" bridge/server.js
           grep -Fq "GT7_UDP_RELAY_V1" bridge/server.js
+          grep -Fq "function requestClientIp" bridge/server.js
+          grep -Fq "function resolveRelayTargets" bridge/server.js
           grep -Fq "function normalizeRelayTargets" bridge/server.js
           grep -Fq "function relayPacket" bridge/server.js
           grep -Fq "rinfo.address!==config.ps5Ip" bridge/server.js
@@ -85,10 +87,13 @@ jobs:
       - name: Install GT7 Bridge reader and diagnostics
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Install editable Bridge and PS5 settings
-        run: node scripts/patch-v4-editable-network-settings.js
+      - name: Install automatic Bridge and PS5 settings
+        run: |
+          node --check scripts/patch-v4-editable-network-settings.js
+          node scripts/patch-v4-editable-network-settings.js
+          node scripts/patch-v4-editable-network-settings.js
 
-      - name: Install relay settings UI
+      - name: Install automatic app presets
         run: |
           node --check scripts/patch-v4-relay-settings-ui.js
           node scripts/patch-v4-relay-settings-ui.js
@@ -117,23 +122,18 @@ jobs:
           ok(bridgeTags.length===1,`uma única Bridge no HTML (${bridgeTags.length} tag)`);
           ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge padrão configurada');
           ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão configurado');
-          ok(bridge.includes('function saveNetworkSettings'),'salvamento editável instalado');
+          ok(bridge.includes('function saveNetworkSettings'),'salvamento automático instalado');
           ok(bridge.includes('function getBridgeUrl'),'Bridge dinâmica instalada');
-          ok(bridge.includes('function getUdpPort'),'porta UDP editável instalada');
-          ok(bridge.includes('function getHeartbeatPort'),'heartbeat editável instalado');
+          ok(bridge.includes('function getUdpPort'),'porta UDP instalada');
+          ok(bridge.includes('function getHeartbeatPort'),'heartbeat instalado');
           ok(bridge.includes('async function getRelayStatus(){'),'leitura do relay instalada');
           ok(bridge.includes('async function saveRelayTargets(targets){'),'salvamento do relay instalado');
           ok(bridge.includes('getRelayStatus, saveRelayTargets,'),'API pública do relay instalada');
-          ok(index.includes('editableBridgeUrl'),'campo editável da Bridge presente');
-          ok(index.includes('editablePs5Ip'),'campo editável do PS5 presente');
-          ok(index.includes('editableUdpPort'),'campo editável UDP presente');
-          ok(index.includes('editableHeartbeatPort'),'campo editável heartbeat presente');
-          ok(index.includes('relaySettingsCard'),'card visual do relay presente');
-          ok(index.includes('relayTargetSelect'),'seletor de destinos do relay presente');
-          ok(index.includes('saveRelayTarget'),'botão salvar destino presente');
-          ok(index.includes('removeRelayTarget'),'botão remover destino presente');
-          ok(index.includes('testRelayTarget'),'botão testar relay presente');
-          ok((index.match(/V4 RELAY SETTINGS UI/g)||[]).length===1,'uma única interface de relay no HTML');
+          for(const id of ['applyAutomaticNetwork','advancedNetworkSettings','editableBridgeUrl','editablePs5Ip','editableUdpPort','editableHeartbeatPort'])ok(index.includes(id),`controle automático/avançado presente: ${id}`);
+          for(const id of ['relaySettingsCard','enableVictoryPreset','enableSimDashboardPreset','disableRelayPreset','advancedRelaySettings','relayTargetSelect','saveRelayTarget','removeRelayTarget','testRelayTarget'])ok(index.includes(id),`controle do relay presente: ${id}`);
+          ok(index.includes('__CLIENT__'),'detecção automática do IP do celular instalada');
+          ok((index.match(/V4 EDITABLE NETWORK SETTINGS UI/g)||[]).length===1,'uma única interface de conexão automática');
+          ok((index.match(/V4 RELAY SETTINGS UI/g)||[]).length===1,'uma única interface de relay');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida do HTML final');
           ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido do HTML final');
           for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
@@ -168,10 +168,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.22-Relay-UDP-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.23-Auto-Config-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.22-Relay-UDP
-          path: release/GT7-Telemetria-V4.22-Relay-UDP-debug.apk
+          name: GT7-Telemetria-V4.23-Auto-Config
+          path: release/GT7-Telemetria-V4.23-Auto-Config-debug.apk
