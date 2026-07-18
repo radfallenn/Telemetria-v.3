@@ -27,6 +27,18 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
+      - name: Validate Raspberry GT7 Bridge
+        run: |
+          set -euo pipefail
+          node --check bridge/patch-single-socket.js
+          node bridge/patch-single-socket.js
+          node --check bridge/server.js
+          grep -Fq "const udp=dgram.createSocket('udp4');" bridge/server.js
+          grep -Fq "udp.send(b,0,b.length,PS5_PORT,config.ps5Ip,()=>{});" bridge/server.js
+          ! grep -Fq "hb=dgram.createSocket('udp4')" bridge/server.js
+          ! grep -Fq "hb.send(" bridge/server.js
+          node -e "const c=require('./bridge/config.json');if(c.ps5Ip!=='192.168.1.81'||c.packetType!=='C')process.exit(1)"
+
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
 
