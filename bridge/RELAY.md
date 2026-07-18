@@ -1,68 +1,61 @@
 # Relay UDP da telemetria GT7
 
-A Bridge recebe os pacotes brutos do PS5 em UDP `33740`, decodifica para o aplicativo principal e pode encaminhar os mesmos pacotes para até 10 dispositivos na rede local.
+A Bridge recebe os pacotes brutos do PS5 em UDP `33740`, decodifica para o aplicativo principal e pode encaminhar os mesmos pacotes para aplicativos de telemetria na rede local.
 
-## Configurar diretamente pelo aplicativo
+## Configuração automática pelo aplicativo
 
-Abra a página **SET / Configurações** e localize o card:
+Abra **SET / Configurações** e localize o card **APLICATIVOS DE TELEMETRIA**.
 
-`RELAY UDP · VICTORY / SIM DASHBOARD`
+Não é necessário preencher IP, endereço da Bridge ou portas. Use apenas um dos botões:
 
-No card é possível:
+- **ATIVAR VICTORY**
+- **ATIVAR SIM DASHBOARD**
+- **DESATIVAR RELAY**
+- **TESTAR CONEXÃO**
 
-- selecionar um destino já configurado;
-- criar um novo destino;
-- definir nome, IP e porta UDP;
-- ativar ou desativar o destino sem removê-lo;
-- salvar ou remover destinos;
-- testar o relay e atualizar os contadores;
-- acompanhar pacotes recebidos do PS5, pacotes encaminhados e erros.
+Ao tocar em Victory ou SIM Dashboard, a Bridge identifica automaticamente o IP do celular que fez a solicitação e configura a porta padrão de telemetria GT7 `33740`.
 
-Para o Victory, use normalmente uma porta alternativa, como `33741`, e configure a mesma porta no aplicativo receptor. Para o SIM Dashboard ou outro receptor, informe o IP do dispositivo e a porta configurada nele.
+A tela principal mostra somente o estado, o IP detectado, os pacotes recebidos do PS5, os pacotes encaminhados e os erros. Os campos técnicos continuam disponíveis, mas ficam recolhidos em **Configuração avançada**.
+
+## Conexão principal automática
+
+O aplicativo principal também já utiliza automaticamente:
+
+- Bridge HTTP: `http://192.168.1.70:8788`
+- PS5: `192.168.1.81`
+- UDP: `33740`
+- heartbeat: `33739`
+
+Esses valores só precisam ser alterados caso a rede doméstica mude. A edição manual fica recolhida em **Configuração avançada**.
 
 ## Consultar o status pela API
 
 `GET http://IP_DO_RASPBERRY:8788/api/relay`
 
-A resposta informa destinos, pacotes recebidos do PS5, pacotes encaminhados, erros e horários da última atividade.
+A resposta informa o IP do cliente detectado, destinos, pacotes recebidos do PS5, pacotes encaminhados, erros e horários da última atividade.
 
-## Configurar um destino pela API
+## Configuração automática pela API
 
-Envie `POST` para `/api/relay` com JSON:
+O valor especial `__CLIENT__` faz a Bridge usar o IP do dispositivo que enviou a solicitação:
 
 ```json
 {
   "targets": [
     {
       "name": "Victory",
-      "host": "192.168.1.50",
-      "port": 33741,
+      "host": "__CLIENT__",
+      "port": 33740,
       "enabled": true
     }
   ]
 }
 ```
 
-Para SIM Dashboard ou outro receptor, troque o nome, IP e porta pela configuração usada no dispositivo. O pacote encaminhado é o pacote bruto criptografado recebido do GT7.
+Também é possível usar `auto` ou omitir o host. A Bridge substituirá pelo IP do cliente antes de salvar.
 
-## Vários dispositivos
+## Configuração avançada
 
-```json
-{
-  "targets": [
-    {"name": "Victory", "host": "192.168.1.50", "port": 33741, "enabled": true},
-    {"name": "SIM Dashboard", "host": "192.168.1.51", "port": 33740, "enabled": true}
-  ]
-}
-```
-
-## Desativar ou limpar
-
-Defina `enabled` como `false` para preservar o destino sem encaminhar. Para remover todos os destinos, envie:
-
-```json
-{"targets": []}
-```
+Para encaminhar a outro dispositivo, abra **Configuração avançada** e informe manualmente nome, IP e porta. A Bridge aceita até 10 destinos.
 
 As configurações ficam salvas em `bridge/config.json` e são preservadas após reiniciar o container.
 
