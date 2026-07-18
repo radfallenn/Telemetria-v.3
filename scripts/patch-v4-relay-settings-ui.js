@@ -43,6 +43,8 @@ const ui = `<script>
 (function(){
  'use strict';
  const q=id=>document.getElementById(id);
+ const AUTO_HOST='__CLIENT__';
+ const GT7_PORT=33740;
  let relayTargets=[];
  let lastForwarded=0;
  let statusTimer=0;
@@ -54,22 +56,29 @@ const ui = `<script>
  function renderStats(relay){
   const el=q('relayStats');if(!el)return;
   relay=relay||{};
-  el.innerHTML='<b>'+(relay.enabled?'ATIVO':'DESATIVADO')+'</b> · DESTINOS '+Number(relay.activeTargets||0)+'<br>'+ 
+  const client=relay.clientIp||'detectando...';
+  el.innerHTML='<b>'+(relay.enabled?'ATIVO':'DESATIVADO')+'</b> · CELULAR '+esc(client)+'<br>'+ 
    'PS5 '+Number(relay.packetsFromPs5||0)+' · ENVIADOS '+Number(relay.packetsForwarded||0)+' · ERROS '+Number(relay.sendErrors||0)+'<br>'+ 
    'ÚLTIMO PACOTE '+esc(formatTime(relay.lastPacketAt))+' · ÚLTIMO ENVIO '+esc(formatTime(relay.lastForwardAt));
+ }
+ function presetName(){const target=relayTargets.find(function(item){return item&&item.enabled});return target&&target.name||''}
+ function updatePresetButtons(){
+  const active=presetName().toLowerCase();
+  if(q('enableVictoryPreset'))q('enableVictoryPreset').textContent=active.includes('victory')?'VICTORY ATIVO':'ATIVAR VICTORY';
+  if(q('enableSimDashboardPreset'))q('enableSimDashboardPreset').textContent=active.includes('sim dashboard')?'SIM DASHBOARD ATIVO':'ATIVAR SIM DASHBOARD';
  }
  function renderSelect(preferred){
   const select=q('relayTargetSelect');if(!select)return;
   const current=Number.isInteger(preferred)?preferred:selectedIndex();
   select.innerHTML='<option value="-1">NOVO DESTINO</option>'+relayTargets.map(function(target,index){return '<option value="'+index+'">'+esc(target.name||('Destino '+(index+1)))+' · '+esc(target.host)+':'+Number(target.port||0)+'</option>'}).join('');
   select.value=current>=0&&current<relayTargets.length?String(current):'-1';
-  fillForm();
+  fillForm();updatePresetButtons();
  }
  function fillForm(){
   const index=selectedIndex(),target=index>=0?relayTargets[index]:null;
   q('relayName').value=target&&target.name||'';
   q('relayHost').value=target&&target.host||'';
-  q('relayPort').value=target&&target.port||'33741';
+  q('relayPort').value=target&&target.port||String(GT7_PORT);
   q('relayEnabled').checked=!target||target.enabled!==false;
   q('removeRelayTarget').disabled=index<0;
  }
@@ -88,34 +97,38 @@ const ui = `<script>
    if(typeof api().getRelayStatus!=='function')throw new Error('Atualize a Bridge e reinstale o aplicativo');
    const relay=await api().getRelayStatus();
    relayTargets=Array.isArray(relay&&relay.targets)?relay.targets:[];
-   renderSelect(selectedIndex());
-   renderStats(relay);
-   if(!silent)setMessage('STATUS ATUALIZADO');
+   renderSelect(selectedIndex());renderStats(relay);
+   if(!silent)setMessage(relay&&relay.clientIp?'PRONTO · IP DO CELULAR DETECTADO AUTOMATICAMENTE':'AGUARDANDO DETECÇÃO DO CELULAR');
    return relay;
   }catch(error){if(!silent)setMessage('ERRO · '+(error.message||error),true);throw error}
+ }
+ async function activatePreset(name){
+  try{
+   if(typeof api().saveRelayTargets!=='function')throw new Error('Controlador do relay indisponível');
+   setMessage('CONFIGURANDO '+name.toUpperCase()+'...');
+   const relay=await api().saveRelayTargets([{name:name,host:AUTO_HOST,port:GT7_PORT,enabled:true}]);
+   relayTargets=Array.isArray(relay&&relay.targets)?relay.targets:[];
+   renderSelect(0);renderStats(relay);
+   setMessage(name.toUpperCase()+' CONFIGURADO AUTOMATICAMENTE · ABRA O APP E ENTRE NA PISTA');
+  }catch(error){setMessage('ERRO · '+(error.message||error),true)}
+ }
+ async function disableRelay(){
+  try{
+   const relay=await api().saveRelayTargets([]);relayTargets=[];renderSelect(-1);renderStats(relay);setMessage('RELAY DESATIVADO');
+  }catch(error){setMessage('ERRO · '+(error.message||error),true)}
  }
  async function saveTarget(){
   try{
    if(typeof api().saveRelayTargets!=='function')throw new Error('Controlador do relay indisponível');
    const target=readForm(),index=selectedIndex();
-   if(index>=0)relayTargets[index]=target;else{
-    if(relayTargets.length>=10)throw new Error('Limite de 10 destinos atingido');
-    relayTargets.push(target);
-   }
+   if(index>=0)relayTargets[index]=target;else{if(relayTargets.length>=10)throw new Error('Limite de 10 destinos atingido');relayTargets.push(target)}
    const relay=await api().saveRelayTargets(relayTargets);
    relayTargets=Array.isArray(relay&&relay.targets)?relay.targets:relayTargets;
-   const savedIndex=index>=0?index:relayTargets.length-1;
-   renderSelect(savedIndex);renderStats(relay);setMessage('DESTINO SALVO · RELAY '+(relay&&relay.enabled?'ATIVO':'DESATIVADO'));
+   renderSelect(index>=0?index:relayTargets.length-1);renderStats(relay);setMessage('DESTINO AVANÇADO SALVO');
   }catch(error){setMessage('ERRO · '+(error.message||error),true)}
  }
  async function removeTarget(){
-  try{
-   const index=selectedIndex();if(index<0)return;
-   relayTargets.splice(index,1);
-   const relay=await api().saveRelayTargets(relayTargets);
-   relayTargets=Array.isArray(relay&&relay.targets)?relay.targets:relayTargets;
-   renderSelect(-1);renderStats(relay);setMessage('DESTINO REMOVIDO');
-  }catch(error){setMessage('ERRO · '+(error.message||error),true)}
+  try{const index=selectedIndex();if(index<0)return;relayTargets.splice(index,1);const relay=await api().saveRelayTargets(relayTargets);relayTargets=Array.isArray(relay&&relay.targets)?relay.targets:relayTargets;renderSelect(-1);renderStats(relay);setMessage('DESTINO REMOVIDO')}catch(error){setMessage('ERRO · '+(error.message||error),true)}
  }
  async function testRelay(){
   try{
@@ -123,9 +136,9 @@ const ui = `<script>
    const before=await refreshRelay(true);lastForwarded=Number(before&&before.packetsForwarded||0);
    await new Promise(function(resolve){setTimeout(resolve,1800)});
    const after=await refreshRelay(true),forwarded=Number(after&&after.packetsForwarded||0),fromPs5=Number(after&&after.packetsFromPs5||0);
-   if(Number(after&&after.activeTargets||0)<1)setMessage('RELAY SEM DESTINO ATIVO',true);
+   if(Number(after&&after.activeTargets||0)<1)setMessage('RELAY DESATIVADO',true);
    else if(forwarded>lastForwarded)setMessage('TESTE OK · PACOTES ENCAMINHADOS');
-   else if(fromPs5<1)setMessage('CONFIGURADO · AGUARDANDO TELEMETRIA DO PS5');
+   else if(fromPs5<1)setMessage('PRONTO · ENTRE NA PISTA PARA RECEBER TELEMETRIA');
    else setMessage('ATIVO · SEM NOVO PACOTE DURANTE O TESTE');
   }catch(error){setMessage('ERRO · '+(error.message||error),true)}
  }
@@ -133,16 +146,23 @@ const ui = `<script>
   const settings=q('settings');if(!settings||q('relaySettingsCard'))return;
   const host=settings.querySelector('.settings')||settings;
   const card=document.createElement('div');card.className='card';card.id='relaySettingsCard';
-  card.innerHTML='<div class="label">RELAY UDP · VICTORY / SIM DASHBOARD</div>'+ 
-   '<label class="smallsub">DESTINO CONFIGURADO</label><select id="relayTargetSelect"><option value="-1">NOVO DESTINO</option></select>'+ 
-   '<label class="smallsub">NOME</label><input id="relayName" placeholder="Victory">'+ 
-   '<label class="smallsub">IP DO CELULAR / DISPOSITIVO</label><input id="relayHost" inputmode="decimal" placeholder="192.168.1.50">'+ 
-   '<label class="smallsub">PORTA UDP DO DESTINO</label><input id="relayPort" inputmode="numeric" type="number" min="1" max="65535" value="33741">'+ 
+  card.innerHTML='<div class="label">APLICATIVOS DE TELEMETRIA</div>'+ 
+   '<div class="smallsub">Escolha o aplicativo. O IP deste celular e a porta do GT7 serão configurados automaticamente.</div>'+ 
+   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="action" id="enableVictoryPreset" type="button">ATIVAR VICTORY</button><button class="action" id="enableSimDashboardPreset" type="button">ATIVAR SIM DASHBOARD</button></div>'+ 
+   '<button class="action" id="disableRelayPreset" type="button">DESATIVAR RELAY</button>'+ 
+   '<button class="action" id="testRelayTarget" type="button">TESTAR CONEXÃO</button>'+ 
+   '<div class="smallsub" id="relayStats">DETECTANDO CELULAR...</div><div class="smallsub" id="relaySettingsStatus"></div>'+ 
+   '<details id="advancedRelaySettings" style="margin-top:10px"><summary class="smallsub">CONFIGURAÇÃO AVANÇADA</summary>'+ 
+   '<label class="smallsub">DESTINO</label><select id="relayTargetSelect"><option value="-1">NOVO DESTINO</option></select>'+ 
+   '<label class="smallsub">NOME</label><input id="relayName" placeholder="Outro aplicativo">'+ 
+   '<label class="smallsub">IP</label><input id="relayHost" inputmode="decimal" placeholder="192.168.1.50">'+ 
+   '<label class="smallsub">PORTA UDP</label><input id="relayPort" inputmode="numeric" type="number" min="1" max="65535" value="33740">'+ 
    '<label class="smallsub" style="display:flex;gap:10px;align-items:center"><input id="relayEnabled" type="checkbox" checked style="width:auto"> DESTINO ATIVO</label>'+ 
-   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="action" id="saveRelayTarget" type="button">SALVAR DESTINO</button><button class="action" id="removeRelayTarget" type="button">REMOVER</button></div>'+ 
-   '<button class="action" id="testRelayTarget" type="button">TESTAR / ATUALIZAR STATUS</button>'+ 
-   '<div class="smallsub" id="relayStats">CARREGANDO...</div><div class="smallsub" id="relaySettingsStatus"></div>';
+   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="action" id="saveRelayTarget" type="button">SALVAR AVANÇADO</button><button class="action" id="removeRelayTarget" type="button">REMOVER</button></div></details>';
   const network=q('networkSettingsCard');if(network&&network.parentNode===host)network.insertAdjacentElement('afterend',card);else host.prepend(card);
+  q('enableVictoryPreset').onclick=()=>activatePreset('Victory');
+  q('enableSimDashboardPreset').onclick=()=>activatePreset('SIM Dashboard');
+  q('disableRelayPreset').onclick=disableRelay;
   q('relayTargetSelect').onchange=fillForm;
   q('saveRelayTarget').onclick=saveTarget;
   q('removeRelayTarget').onclick=removeTarget;
@@ -154,20 +174,18 @@ const ui = `<script>
 })();
 </script>`;
 
-// Remove somente o bloco <script> que contém o marcador do relay.
-// A versão anterior podia começar em um script anterior e apagar a UI de rede.
 html = removeScriptBlocksByMarker(html, MARK);
 html = html.replace('</body>', ui + '\n</body>');
 
 for (const required of ['async function getRelayStatus(){', 'async function saveRelayTargets(targets){', 'getRelayStatus, saveRelayTargets,']) {
   if (!js.includes(required)) throw new Error('API do relay não instalada: ' + required);
 }
-for (const required of ['relaySettingsCard', 'relayTargetSelect', 'saveRelayTarget', 'testRelayTarget']) {
-  if (!html.includes(required)) throw new Error('Interface do relay não instalada: ' + required);
+for (const required of ['relaySettingsCard', 'enableVictoryPreset', 'enableSimDashboardPreset', 'advancedRelaySettings', 'relayTargetSelect', 'saveRelayTarget', 'testRelayTarget', '__CLIENT__']) {
+  if (!html.includes(required)) throw new Error('Interface automática do relay não instalada: ' + required);
 }
 const relayUiCount = (html.match(/V4 RELAY SETTINGS UI/g) || []).length;
 if (relayUiCount !== 1) throw new Error('Quantidade inválida de interfaces do relay: ' + relayUiCount);
 
 fs.writeFileSync(bridgePath, js);
 fs.writeFileSync(indexPath, html);
-console.log('Configuração visual do relay UDP instalada no aplicativo sem remover outros scripts.');
+console.log('Presets automáticos de Victory e SIM Dashboard instalados; opções técnicas ficam em Avançado.');
