@@ -6,6 +6,11 @@ const indexPath=path.join(root,'www','index.html');
 let js=fs.readFileSync(bridgePath,'utf8');
 let html=fs.readFileSync(indexPath,'utf8');
 const MARK='V4 EDITABLE NETWORK SETTINGS';
+const SCRIPT_BLOCK=/<script\b[^>]*>[\s\S]*?<\/script>\s*/gi;
+
+function removeScriptBlocksByMarker(source,marker){
+ return source.replace(SCRIPT_BLOCK,block=>block.includes(marker)?'':block);
+}
 
 // Torna a URL HTTP da Bridge dinâmica e persistente.
 js=js.replace("const BRIDGE = 'http://192.168.1.70:8788';", "const DEFAULT_BRIDGE = 'http://192.168.1.70:8788';");
@@ -32,11 +37,17 @@ js=js.replace('get ps5Ip(){ return getPs5Ip(); }', 'get ps5Ip(){ return getPs5Ip
 
 // Adiciona campos editáveis ao SET no HTML final.
 const ui=`<script>\n/* ${MARK} UI */\n(function(){\n function q(id){return document.getElementById(id)}\n function install(){\n  const settings=q('settings');if(!settings||q('networkSettingsCard'))return;\n  const host=settings.querySelector('.settings')||settings;\n  const card=document.createElement('div');card.className='card';card.id='networkSettingsCard';\n  card.innerHTML='<div class="label">CONFIGURAÇÃO DA BRIDGE</div>'+\n   '<label class="smallsub">BRIDGE HTTP</label><input id="editableBridgeUrl" inputmode="url" placeholder="http://192.168.1.70:8788">'+\n   '<label class="smallsub">IP DO PS5</label><input id="editablePs5Ip" inputmode="decimal" placeholder="192.168.1.81">'+\n   '<label class="smallsub">PORTA UDP</label><input id="editableUdpPort" inputmode="numeric" type="number" min="1" max="65535" placeholder="33740">'+\n   '<label class="smallsub">PORTA HEARTBEAT</label><input id="editableHeartbeatPort" inputmode="numeric" type="number" min="1" max="65535" placeholder="33739">'+\n   '<button class="action" id="saveNetworkSettings" type="button">SALVAR E RECONECTAR</button>'+\n   '<div class="smallsub" id="networkSettingsStatus"></div>';\n  host.prepend(card);\n  const api=window.gt7Bridge||{};\n  q('editableBridgeUrl').value=api.bridgeUrl||localStorage.getItem('gt7_bridge_url')||'http://192.168.1.70:8788';\n  q('editablePs5Ip').value=api.ps5Ip||localStorage.getItem('gt7_ps5_ip')||'192.168.1.81';\n  q('editableUdpPort').value=api.udpPort||localStorage.getItem('gt7_udp_port')||'33740';\n  q('editableHeartbeatPort').value=api.heartbeatPort||localStorage.getItem('gt7_heartbeat_port')||'33739';\n  q('saveNetworkSettings').onclick=()=>{\n   try{\n    if(!window.gt7Bridge||typeof window.gt7Bridge.saveNetworkSettings!=='function')throw new Error('Controlador da Bridge indisponível');\n    window.gt7Bridge.saveNetworkSettings({bridgeUrl:q('editableBridgeUrl').value,ps5Ip:q('editablePs5Ip').value,udpPort:Number(q('editableUdpPort').value),heartbeatPort:Number(q('editableHeartbeatPort').value)});\n    q('networkSettingsStatus').textContent='SALVO · RECONECTANDO';\n   }catch(e){q('networkSettingsStatus').textContent='ERRO · '+(e.message||e)}\n  };\n }\n if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else setTimeout(install,0);\n})();\n</script>`;
-html=html.replace(new RegExp('<script>[\\s\\S]*?'+MARK+' UI[\\s\\S]*?<\\/script>','g'),'');
+
+// Remove somente o script da própria UI. Não atravessa outros blocos <script>.
+html=removeScriptBlocksByMarker(html,MARK+' UI');
 html=html.replace('</body>',ui+'\n</body>');
 
 if(!js.includes('saveNetworkSettings'))throw new Error('Configuração editável não instalada na Bridge');
-if(!html.includes('editableBridgeUrl'))throw new Error('Campos editáveis não instalados no SET');
+for(const required of ['editableBridgeUrl','editablePs5Ip','editableUdpPort','editableHeartbeatPort']){
+ if(!html.includes(required))throw new Error('Campo editável não instalado: '+required);
+}
+const networkUiCount=(html.match(/V4 EDITABLE NETWORK SETTINGS UI/g)||[]).length;
+if(networkUiCount!==1)throw new Error('Quantidade inválida de interfaces de rede: '+networkUiCount);
 fs.writeFileSync(bridgePath,js);
 fs.writeFileSync(indexPath,html);
-console.log('Bridge, PS5 e portas agora são editáveis e persistentes.');
+console.log('Bridge, PS5 e portas agora são editáveis, persistentes e idempotentes.');
