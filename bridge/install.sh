@@ -13,6 +13,6 @@ services:
       PS5_IP: "192.168.1.81"
     volumes:
       - ./:/app
-    command: sh -c "node patch-single-socket.js && node server.js"
+    command: sh -c "node patch-single-socket.js && node patch-udp-relay.js && node server.js"
 EOF
 sudo docker compose -f compose.yml up -d --force-recreate
