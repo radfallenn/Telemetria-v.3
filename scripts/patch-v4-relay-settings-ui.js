@@ -6,6 +6,11 @@ const root = path.join(__dirname, '..');
 const bridgePath = path.join(root, 'www', 'bridge-v408.js');
 const indexPath = path.join(root, 'www', 'index.html');
 const MARK = 'V4 RELAY SETTINGS UI';
+const SCRIPT_BLOCK = /<script\b[^>]*>[\s\S]*?<\/script>\s*/gi;
+
+function removeScriptBlocksByMarker(source, marker) {
+  return source.replace(SCRIPT_BLOCK, block => block.includes(marker) ? '' : block);
+}
 
 let js = fs.readFileSync(bridgePath, 'utf8');
 let html = fs.readFileSync(indexPath, 'utf8');
@@ -149,7 +154,9 @@ const ui = `<script>
 })();
 </script>`;
 
-html = html.replace(new RegExp('<script>[\\s\\S]*?' + MARK + '[\\s\\S]*?<\\/script>', 'g'), '');
+// Remove somente o bloco <script> que contém o marcador do relay.
+// A versão anterior podia começar em um script anterior e apagar a UI de rede.
+html = removeScriptBlocksByMarker(html, MARK);
 html = html.replace('</body>', ui + '\n</body>');
 
 for (const required of ['async function getRelayStatus(){', 'async function saveRelayTargets(targets){', 'getRelayStatus, saveRelayTargets,']) {
@@ -158,7 +165,9 @@ for (const required of ['async function getRelayStatus(){', 'async function save
 for (const required of ['relaySettingsCard', 'relayTargetSelect', 'saveRelayTarget', 'testRelayTarget']) {
   if (!html.includes(required)) throw new Error('Interface do relay não instalada: ' + required);
 }
+const relayUiCount = (html.match(/V4 RELAY SETTINGS UI/g) || []).length;
+if (relayUiCount !== 1) throw new Error('Quantidade inválida de interfaces do relay: ' + relayUiCount);
 
 fs.writeFileSync(bridgePath, js);
 fs.writeFileSync(indexPath, html);
-console.log('Configuração visual do relay UDP instalada no aplicativo.');
+console.log('Configuração visual do relay UDP instalada no aplicativo sem remover outros scripts.');
