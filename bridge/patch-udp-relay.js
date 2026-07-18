@@ -32,8 +32,10 @@ if (!source.includes(marker)) {
   const relayCore = `/* ${marker} */
 const relayStats={packetsFromPs5:0,packetsForwarded:0,sendErrors:0,lastPacketAt:null,lastForwardAt:null,lastError:null};
 function validRelayIp(value){let parts=String(value||'').trim().split('.');return parts.length===4&&parts.every(part=>/^\\d{1,3}$/.test(part)&&Number(part)>=0&&Number(part)<=255)}
+function requestClientIp(req){let forwarded=String(req&&req.headers&&req.headers['x-forwarded-for']||'').split(',')[0].trim(),remote=String(req&&req.socket&&req.socket.remoteAddress||'').trim(),value=forwarded||remote;return value.replace(/^::ffff:/,'')}
 function normalizeRelayTargets(value){if(!Array.isArray(value))return[];let seen=new Set(),out=[];for(let i=0;i<value.length&&out.length<10;i++){let item=value[i]||{},host=String(item.host||item.ip||'').trim(),port=Number.parseInt(item.port,10);if(!validRelayIp(host)||host==='0.0.0.0'||host==='255.255.255.255'||!Number.isInteger(port)||port<1||port>65535)continue;let key=host+':'+port;if(seen.has(key))continue;seen.add(key);out.push({name:String(item.name||('Destino '+(out.length+1))).slice(0,40),host,port,enabled:item.enabled!==false})}return out}
-function relayStatus(){config.relayTargets=normalizeRelayTargets(config.relayTargets);return{enabled:config.relayTargets.some(target=>target.enabled),targets:config.relayTargets,activeTargets:config.relayTargets.filter(target=>target.enabled).length,...relayStats}}
+function resolveRelayTargets(value,clientIp){let list=Array.isArray(value)?value:[];return normalizeRelayTargets(list.map(item=>{item=item||{};let host=String(item.host||item.ip||'').trim();if(!host||host==='__CLIENT__'||host.toLowerCase()==='auto')host=clientIp;return{...item,host}}))}
+function relayStatus(clientIp){config.relayTargets=normalizeRelayTargets(config.relayTargets);return{enabled:config.relayTargets.some(target=>target.enabled),targets:config.relayTargets,activeTargets:config.relayTargets.filter(target=>target.enabled).length,clientIp:validRelayIp(clientIp)?clientIp:null,...relayStats}}
 function relayPacket(msg,rinfo){if(!rinfo||rinfo.address!==config.ps5Ip)return;relayStats.packetsFromPs5++;relayStats.lastPacketAt=Date.now();config.relayTargets=normalizeRelayTargets(config.relayTargets);for(const target of config.relayTargets){if(!target.enabled||target.host===config.ps5Ip)continue;if(target.host==='127.0.0.1'&&target.port===UDP_PORT)continue;udp.send(msg,0,msg.length,target.port,target.host,error=>{if(error){relayStats.sendErrors++;relayStats.lastError=String(error.message||error);return}relayStats.packetsForwarded++;relayStats.lastForwardAt=Date.now()})}}
 config.relayTargets=normalizeRelayTargets(config.relayTargets);
 `;
@@ -62,8 +64,8 @@ config.relayTargets=normalizeRelayTargets(config.relayTargets);
   source = replaceRequired(
     source,
     "if(u.pathname==='/api/config'&&req.method==='GET')",
-    "if(u.pathname==='/api/relay'&&req.method==='GET')return js(res,{ok:true,relay:relayStatus()});if(u.pathname==='/api/relay'&&req.method==='POST'){try{let j=JSON.parse(await body(req)||'{}'),targets=Array.isArray(j)?j:(j.targets||j.relayTargets||[]);config.relayTargets=normalizeRelayTargets(targets);saveConfig();return js(res,{ok:true,relay:relayStatus()})}catch(e){return js(res,{ok:false,error:String(e)},400)}}if(u.pathname==='/api/config'&&req.method==='GET')",
-    'API de configuração do relay',
+    "if(u.pathname==='/api/relay'&&req.method==='GET'){let clientIp=requestClientIp(req);return js(res,{ok:true,relay:relayStatus(clientIp)})}if(u.pathname==='/api/relay'&&req.method==='POST'){try{let j=JSON.parse(await body(req)||'{}'),targets=Array.isArray(j)?j:(j.targets||j.relayTargets||[]),clientIp=requestClientIp(req);config.relayTargets=resolveRelayTargets(targets,clientIp);saveConfig();return js(res,{ok:true,relay:relayStatus(clientIp)})}catch(e){return js(res,{ok:false,error:String(e)},400)}}if(u.pathname==='/api/config'&&req.method==='GET')",
+    'API de configuração automática do relay',
   );
 }
 
@@ -90,6 +92,8 @@ fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
 
 for (const required of [
   marker,
+  'function requestClientIp',
+  'function resolveRelayTargets',
   'function normalizeRelayTargets',
   'function relayPacket',
   "udp.on('message',(msg,rinfo)=>{if(!rinfo||rinfo.address!==config.ps5Ip)return;relayPacket(msg,rinfo);",
@@ -99,5 +103,5 @@ for (const required of [
   if (!source.includes(required)) throw new Error(`Validação falhou: ${required}`);
 }
 
-console.log(`OK: relay UDP instalado; ${config.relayTargets.length} destino(s) configurado(s)`);
-console.log('OK: API disponível em GET/POST /api/relay');
+console.log(`OK: relay UDP automático instalado; ${config.relayTargets.length} destino(s) configurado(s)`);
+console.log('OK: o IP do celular é detectado automaticamente em GET/POST /api/relay');
