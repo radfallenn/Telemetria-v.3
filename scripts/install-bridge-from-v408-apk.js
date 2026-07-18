@@ -16,7 +16,8 @@ for(const marker of markers){
  html=html.replace(new RegExp('<script>[\\s\\S]*?\\/\\* '+escaped+' \\*\\/[\\s\\S]*?<\\/script>','g'),'');
 }
 
-html=html.replace(/\s*<script\s+src=["']bridge-v408\.js["']><\/script>\s*/ig,'\n');
+const bridgeScriptTag=/<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*bridge-v408\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script>\s*/gi;
+html=html.replace(bridgeScriptTag,'\n');
 html=html.replaceAll('http://192.168.1.70:8787','http://192.168.1.70:8788');
 html=html.replaceAll('192.168.1.68','192.168.1.81');
 html=html.replaceAll('192.168.1.71','192.168.1.81');
@@ -29,8 +30,8 @@ html=html.replace(/poll\(\);\s*timer=setInterval\(poll,700\);/g,'');
 html=html.replace(/timer=setInterval\(poll,700\);/g,'');
 html=html.replace('</body>','<script src="bridge-v408.js"></script>\n</body>');
 
-if(!html.includes('bridge-v408.js'))throw new Error('Conexão limpa não foi injetada');
+const installedBridgeTags=html.match(bridgeScriptTag)||[];
+if(installedBridgeTags.length!==1)throw new Error('Referência duplicada da Bridge: '+installedBridgeTags.length+' tags');
 if(html.includes('http://192.168.1.70:8787')||html.includes('192.168.1.68')||html.includes('192.168.1.71'))throw new Error('Configuração antiga ainda presente');
-if((html.match(/bridge-v408\.js/g)||[]).length!==1)throw new Error('Referência duplicada da Bridge');
 fs.writeFileSync(indexPath,html);
 console.log('Conexão GT7 instalada: Bridge 192.168.1.70:8788 / PS5 padrão 192.168.1.81');
