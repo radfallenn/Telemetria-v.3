@@ -22,6 +22,12 @@ function replaceRequired(source, oldText, newText, label) {
 let source = fs.readFileSync(serverFile, 'utf8');
 source = replaceRequired(
   source,
+  'const PORT=8787,UDP_PORT=33740,PS5_PORT=33739,',
+  'const PORT=8788,UDP_PORT=33740,PS5_PORT=33739,',
+  'porta HTTP 8788',
+);
+source = replaceRequired(
+  source,
   "process.env.PS5_IP||'192.168.1.68'",
   "process.env.PS5_IP||'192.168.1.81'",
   'PS5 padrão 192.168.1.81',
@@ -53,6 +59,9 @@ if (!config.packetType) config.packetType = 'C';
 if (typeof config.autoSession !== 'boolean') config.autoSession = true;
 fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
 
+if (!source.includes('const PORT=8788,UDP_PORT=33740,PS5_PORT=33739,')) {
+  throw new Error('Validação falhou: porta HTTP 8788 não encontrada');
+}
 if (!source.includes("const udp=dgram.createSocket('udp4');")) {
   throw new Error('Validação falhou: socket UDP único não encontrado');
 }
@@ -63,5 +72,6 @@ if (!source.includes("udp.send(b,0,b.length,PS5_PORT,config.ps5Ip,()=>{});")) {
   throw new Error('Validação falhou: heartbeat não usa o socket UDP receptor');
 }
 
+console.log(`OK: Bridge HTTP em 0.0.0.0:8788`);
 console.log(`OK: Bridge preparada para PS5 ${config.ps5Ip}`);
 console.log(`OK: heartbeat ${config.packetType} em UDP 33739 e recepção no mesmo socket UDP 33740`);
