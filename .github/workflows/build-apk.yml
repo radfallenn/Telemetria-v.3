@@ -31,13 +31,23 @@ jobs:
         run: |
           set -euo pipefail
           node --check bridge/patch-single-socket.js
+          node --check bridge/patch-udp-relay.js
           node bridge/patch-single-socket.js
+          node bridge/patch-udp-relay.js
           node --check bridge/server.js
           grep -Fq "const udp=dgram.createSocket('udp4');" bridge/server.js
           grep -Fq "udp.send(b,0,b.length,PS5_PORT,config.ps5Ip,()=>{});" bridge/server.js
           ! grep -Fq "hb=dgram.createSocket('udp4')" bridge/server.js
           ! grep -Fq "hb.send(" bridge/server.js
-          node -e "const c=require('./bridge/config.json');if(c.ps5Ip!=='192.168.1.81'||c.packetType!=='C')process.exit(1)"
+          grep -Fq "GT7_UDP_RELAY_V1" bridge/server.js
+          grep -Fq "function normalizeRelayTargets" bridge/server.js
+          grep -Fq "function relayPacket" bridge/server.js
+          grep -Fq "rinfo.address!==config.ps5Ip" bridge/server.js
+          grep -Fq "u.pathname==='/api/relay'&&req.method==='GET'" bridge/server.js
+          grep -Fq "u.pathname==='/api/relay'&&req.method==='POST'" bridge/server.js
+          node -e "const c=require('./bridge/config.json');if(c.ps5Ip!=='192.168.1.81'||c.packetType!=='C'||!Array.isArray(c.relayTargets))process.exit(1)"
+          node bridge/patch-udp-relay.js
+          test "$(grep -o 'GT7_UDP_RELAY_V1' bridge/server.js | wc -l)" -eq 1
 
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
