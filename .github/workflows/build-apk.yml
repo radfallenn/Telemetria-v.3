@@ -113,7 +113,8 @@ jobs:
           const ids=new Set(Array.isArray(attrs)?attrs.map(a=>a&&a.id).filter(Boolean):[]);
           ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos no banco interno`);
           for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo essencial: ${id}`);
-          ok((index.match(/bridge-v408\.js/g)||[]).length===1,'uma única Bridge no HTML');
+          const bridgeTags=index.match(/<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*bridge-v408\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script>/gi)||[];
+          ok(bridgeTags.length===1,`uma única Bridge no HTML (${bridgeTags.length} tag)`);
           ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge padrão configurada');
           ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão configurado');
           ok(bridge.includes('function saveNetworkSettings'),'salvamento editável instalado');
