@@ -26,6 +26,16 @@ http://192.168.1.70:8789/api/health
 
 Antes da corrida, a resposta deve mostrar `udpBound: true`. Durante a corrida, `telemetryReceiving` deve mudar para `true`.
 
+## APK
+
+O workflow atual valida exclusivamente a nova Bridge `8789`. A checagem antiga que exigia `192.168.1.70:8788` não faz parte do build atual.
+
+Artifact esperado:
+
+```text
+GT7-Telemetria-V4.28-Nova-Bridge-8789
+```
+
 ## Portas do GT7
 
 A porta HTTP da nossa Bridge é nova: `8789`. As portas UDP `33739` e `33740` pertencem ao protocolo do próprio GT7 e ficam isoladas dentro deste serviço. Elas não são portas do painel Android e não podem ser substituídas por portas arbitrárias sem interromper a telemetria.
