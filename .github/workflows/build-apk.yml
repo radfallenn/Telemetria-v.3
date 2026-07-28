@@ -27,45 +27,49 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
-      - name: Validate rebuilt Raspberry GT7 Bridge V5
+      - name: Validate new Bridge 8789
         run: |
           set -euo pipefail
-          node --check bridge/server.js
-          sh -n bridge/install.sh
+          node --check bridge-8789/protocol.js
+          node --check bridge-8789/sessions.js
+          node --check bridge-8789/server.js
+          sh -n bridge-8789/install.sh
           node <<'NODE'
           const fs=require('fs');
-          const s=fs.readFileSync('bridge/server.js','utf8');
-          const ok=(v,m)=>{if(!v)throw new Error(m);console.log('OK:',m)};
-          ok((s.match(/dgram\.createSocket/g)||[]).length===1,'um único socket UDP');
-          ok(s.includes("const HEARTBEAT = Buffer.from('A', 'ascii')"),'heartbeat GT7 usa byte A');
-          ok(s.includes("socket.bind(UDP_LISTEN_PORT, '0.0.0.0')"),'socket recebe na porta UDP 33740');
-          ok(s.includes('udpSocket.send(HEARTBEAT'),'heartbeat enviado pelo mesmo socket de recepção');
-          ok(s.includes("PS5_HEARTBEAT_PORT = toPort(process.env.PS5_HEARTBEAT_PORT, 33739)"),'destino heartbeat 33739');
-          ok(s.includes("UDP_LISTEN_PORT = toPort(process.env.UDP_LISTEN_PORT, 33740)"),'recepção UDP 33740');
-          ok(s.includes("'192.168.1.81'"),'PS5 padrão 192.168.1.81');
-          ok(s.includes("'/api/restart'"),'reinício real do socket por API');
-          ok(!s.includes("packetType:'C'")&&!s.includes('Buffer.from(String(config.packetType'),'heartbeat C antigo removido');
+          const server=fs.readFileSync('bridge-8789/server.js','utf8');
+          const protocol=fs.readFileSync('bridge-8789/protocol.js','utf8');
+          const ok=(value,message)=>{if(!value)throw new Error(message);console.log('OK:',message)};
+          ok(server.includes('process.env.HTTP_PORT || 8789'),'HTTP padrão 8789');
+          ok(server.includes("const HEARTBEAT = Buffer.from('A', 'ascii')"),'heartbeat A');
+          ok(server.includes("require('./protocol')"),'protocolo separado');
+          ok(protocol.includes('Simulator Interface Packet GT7 ver 0.0'),'decodificador Salsa GT7');
+          ok(server.includes("'/api/restart'"),'reinício da Bridge por API');
+          ok(server.includes("'GT7 Bridge 8789'"),'identificação da nova Bridge');
           NODE
-          rm -rf /tmp/gt7-bridge-ci
-          mkdir -p /tmp/gt7-bridge-ci/data
-          HTTP_PORT=18788 UDP_LISTEN_PORT=43740 PS5_HEARTBEAT_PORT=43739 BRIDGE_CONFIG_FILE=/tmp/gt7-bridge-ci/config.json BRIDGE_DATA_DIR=/tmp/gt7-bridge-ci/data node bridge/server.js >/tmp/gt7-bridge-ci/server.log 2>&1 &
+          rm -rf /tmp/bridge-8789-ci
+          mkdir -p /tmp/bridge-8789-ci/data
+          HTTP_PORT=18789 UDP_RECEIVE_PORT=43740 PS5_HEARTBEAT_PORT=43739 CONFIG_FILE=/tmp/bridge-8789-ci/config.json DATA_DIR=/tmp/bridge-8789-ci/data node bridge-8789/server.js >/tmp/bridge-8789-ci/server.log 2>&1 &
           BRIDGE_PID=$!
-          trap 'kill "$BRIDGE_PID" 2>/dev/null || true; cat /tmp/gt7-bridge-ci/server.log' EXIT
+          trap 'kill "$BRIDGE_PID" 2>/dev/null || true; cat /tmp/bridge-8789-ci/server.log' EXIT
           node <<'NODE'
-          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
           (async()=>{
             let health;
-            for(let i=0;i<20;i++){
-              try{const r=await fetch('http://127.0.0.1:18788/api/health');health=await r.json();if(r.ok&&health.ok&&health.udpBound)break}catch{}
+            for(let attempt=0;attempt<25;attempt+=1){
+              try{
+                const response=await fetch('http://127.0.0.1:18789/api/health');
+                health=await response.json();
+                if(response.ok&&health.ok&&health.udpBound)break;
+              }catch{}
               await wait(150);
             }
-            if(!health||!health.ok||!health.udpBound)throw new Error('Bridge V5 não iniciou: '+JSON.stringify(health));
-            if(health.heartbeatByte!=='A'||health.sameSocket!==true)throw new Error('Heartbeat/socket inválido: '+JSON.stringify(health));
-            const restart=await fetch('http://127.0.0.1:18788/api/restart',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-            const restarted=await restart.json();
-            if(!restart.ok||!restarted.ok)throw new Error('Reinício UDP falhou: '+JSON.stringify(restarted));
-            console.log('OK: Bridge V5 iniciou, vinculou UDP e reiniciou o socket');
-          })().catch(e=>{console.error(e);process.exit(1)});
+            if(!health||!health.ok||!health.udpBound)throw new Error('Bridge 8789 não iniciou: '+JSON.stringify(health));
+            if(health.httpPort!==18789||health.heartbeatByte!=='A')throw new Error('Configuração inesperada: '+JSON.stringify(health));
+            const response=await fetch('http://127.0.0.1:18789/api/restart',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+            const restarted=await response.json();
+            if(!response.ok||!restarted.ok||!restarted.state?.udp?.bound)throw new Error('Reinício falhou: '+JSON.stringify(restarted));
+            console.log('OK: nova Bridge 8789 iniciou e reiniciou');
+          })().catch(error=>{console.error(error);process.exit(1)});
           NODE
 
       - name: Fix windows and card height
@@ -104,7 +108,7 @@ jobs:
       - name: Install GT7 Bridge reader
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Connect app to Bridge V5
+      - name: Connect app to new Bridge 8789
         run: |
           node --check scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
@@ -125,22 +129,21 @@ jobs:
           const index=fs.readFileSync('www/index.html','utf8');
           const bridge=fs.readFileSync('www/bridge-v408.js','utf8');
           const attrs=JSON.parse(fs.readFileSync('www/telemetry-attributes.json','utf8'));
-          const ok=(v,m)=>{if(!v)throw new Error(m);console.log('OK:',m)};
-          const ids=new Set(Array.isArray(attrs)?attrs.map(a=>a&&a.id).filter(Boolean):[]);
+          const ok=(value,message)=>{if(!value)throw new Error(message);console.log('OK:',message)};
+          const ids=new Set(Array.isArray(attrs)?attrs.map(item=>item&&item.id).filter(Boolean):[]);
           ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos`);
           for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo: ${id}`);
           const bridgeTags=index.match(/<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*bridge-v408\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script>/gi)||[];
           ok(bridgeTags.length===1,`uma única Bridge (${bridgeTags.length})`);
           for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl'])ok(bridge.includes(fn),`função: ${fn}`);
           for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
-          ok(index.includes('http://192.168.1.70:8788'),'Bridge Raspberry padrão configurada');
+          ok(index.includes('http://192.168.1.70:8789'),'nova Bridge 8789 configurada');
           ok(index.includes('192.168.1.81'),'PS5 padrão configurado');
-          ok(index.includes('BRIDGE V5 NO RASPBERRY'),'janela SET usa Bridge V5');
-          ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge usa URL editável com padrão do Raspberry');
-          ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 usa IP correto');
-          ok(bridge.includes("http('/api/restart'"),'botão reinicia o socket UDP real');
-          ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas UDP removidas da janela SET');
-          ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET reconstruída');
+          ok(index.includes('NOVA BRIDGE 8789'),'janela SET atualizada');
+          ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8789'"),'controlador usa 8789');
+          ok(!index.includes('http://192.168.1.70:8788'),'Bridge 8788 removida do APK final');
+          ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas do protocolo ocultas no SET');
+          ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
           ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido');
           for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
@@ -174,10 +177,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.27-Bridge-V5-Socket-Unico-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.28-Nova-Bridge-8789-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.27-Bridge-V5-Socket-Unico
-          path: release/GT7-Telemetria-V4.27-Bridge-V5-Socket-Unico-debug.apk
+          name: GT7-Telemetria-V4.28-Nova-Bridge-8789
+          path: release/GT7-Telemetria-V4.28-Nova-Bridge-8789-debug.apk
