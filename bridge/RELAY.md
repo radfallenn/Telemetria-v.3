@@ -1,64 +1,75 @@
-# Relay UDP da telemetria GT7
+# Bridge V5 da telemetria GT7
 
-A Bridge recebe os pacotes brutos do PS5 em UDP `33740`, decodifica para o aplicativo principal e pode encaminhar os mesmos pacotes para aplicativos de telemetria na rede local.
+A Bridge foi refeita para eliminar sockets, patches e relays concorrentes.
 
-## Configuração automática pelo aplicativo
+## Rede padrão
 
-Abra **SET / Configurações** e localize o card **APLICATIVOS DE TELEMETRIA**.
-
-Não é necessário preencher IP, endereço da Bridge ou portas. Use apenas um dos botões:
-
-- **ATIVAR VICTORY**
-- **ATIVAR SIM DASHBOARD**
-- **DESATIVAR RELAY**
-- **TESTAR CONEXÃO**
-
-Ao tocar em Victory ou SIM Dashboard, a Bridge identifica automaticamente o IP do celular que fez a solicitação e configura a porta padrão de telemetria GT7 `33740`.
-
-A tela principal mostra somente o estado, o IP detectado, os pacotes recebidos do PS5, os pacotes encaminhados e os erros. Os campos técnicos continuam disponíveis, mas ficam recolhidos em **Configuração avançada**.
-
-## Conexão principal automática
-
-O aplicativo principal também já utiliza automaticamente:
-
-- Bridge HTTP: `http://192.168.1.70:8788`
+- Raspberry/Bridge HTTP: `http://192.168.1.70:8788`
 - PS5: `192.168.1.81`
-- UDP: `33740`
-- heartbeat: `33739`
+- Heartbeat: byte ASCII `A` enviado para UDP `33739`
+- Recepção: UDP `33740`
+- Heartbeat e recepção usam exatamente o mesmo socket vinculado à porta `33740`.
 
-Esses valores só precisam ser alterados caso a rede doméstica mude. A edição manual fica recolhida em **Configuração avançada**.
+## Instalação no Raspberry
 
-## Consultar o status pela API
+Dentro do repositório:
 
-`GET http://IP_DO_RASPBERRY:8788/api/relay`
+```bash
+cd bridge
+chmod +x install.sh
+./install.sh
+```
 
-A resposta informa o IP do cliente detectado, destinos, pacotes recebidos do PS5, pacotes encaminhados, erros e horários da última atividade.
+O instalador recria somente o container `telemetria-v3-bridge`, usa rede `host`, verifica a API e confirma que o socket UDP está vinculado.
 
-## Configuração automática pela API
+## Estados
 
-O valor especial `__CLIENT__` faz a Bridge usar o IP do dispositivo que enviou a solicitação:
+- `udp_desligado`: a porta `33740` não pôde ser vinculada. Normalmente existe outro processo usando a porta.
+- `aguardando_pacotes`: Bridge HTTP e socket UDP estão ativos, mas o PS5 ainda não respondeu.
+- `recebendo_udp_sem_decode`: chegaram datagramas, porém eles não foram reconhecidos como telemetria GT7 válida.
+- `recebendo_udp_decodificado`: telemetria real recebida e decodificada.
+
+## Diagnóstico
+
+```text
+GET http://192.168.1.70:8788/api/health
+GET http://192.168.1.70:8788/api/diagnostic
+GET http://192.168.1.70:8788/api/status
+```
+
+A resposta saudável, antes de abrir uma corrida, deve conter:
 
 ```json
 {
-  "targets": [
-    {
-      "name": "Victory",
-      "host": "__CLIENT__",
-      "port": 33740,
-      "enabled": true
-    }
-  ]
+  "ok": true,
+  "udpBound": true,
+  "heartbeatByte": "A",
+  "sameSocket": true,
+  "ps5Ip": "192.168.1.81"
 }
 ```
 
-Também é possível usar `auto` ou omitir o host. A Bridge substituirá pelo IP do cliente antes de salvar.
+Quando o GT7 estiver enviando dados, `telemetryReceiving` passa para `true`.
 
-## Configuração avançada
+## Reiniciar apenas o UDP
 
-Para encaminhar a outro dispositivo, abra **Configuração avançada** e informe manualmente nome, IP e porta. A Bridge aceita até 10 destinos.
+```text
+POST http://192.168.1.70:8788/api/restart
+```
 
-As configurações ficam salvas em `bridge/config.json` e são preservadas após reiniciar o container.
+Esse endpoint fecha e recria o socket UDP sem derrubar a API HTTP nem apagar sessões.
 
-## Segurança contra loops
+## Alterar o IP do PS5
 
-A Bridge encaminha somente datagramas cujo endereço de origem corresponde ao IP configurado do PS5. Destinos inválidos, duplicados, broadcast e o próprio PS5 são ignorados.
+```text
+POST http://192.168.1.70:8788/api/config
+Content-Type: application/json
+
+{"ps5Ip":"192.168.1.81"}
+```
+
+O IP é salvo em `bridge/config.json` e reaplicado ao heartbeat imediatamente.
+
+## Regra importante
+
+Não executar `patch-single-socket.js`, `patch-udp-relay.js` ou qualquer outro script que reescreva `server.js`. Esses arquivos foram removidos. O serviço correto inicia diretamente com `node server.js`.
