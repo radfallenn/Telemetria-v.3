@@ -30,12 +30,8 @@ jobs:
       - name: Validate Raspberry GT7 Bridge
         run: |
           set -euo pipefail
-          node --check bridge/patch-single-socket.js
-          node --check bridge/patch-udp-relay.js
-          node bridge/patch-single-socket.js
-          node bridge/patch-udp-relay.js
           node --check bridge/server.js
-          node -e "const c=require('./bridge/config.json');if(c.ps5Ip!=='192.168.1.81'||!Array.isArray(c.relayTargets))process.exit(1)"
+          node -e "const fs=require('fs');const s=fs.readFileSync('bridge/server.js','utf8');if(!s.includes('const PORT=8788')||!s.includes(\"192.168.1.81\")||!s.includes(\"'/api/live'\")||!s.includes(\"'/api/status'\"))process.exit(1)"
 
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
@@ -73,7 +69,7 @@ jobs:
       - name: Install GT7 Bridge reader
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Rebuild SET and Bridge controls
+      - name: Rebuild SET for local Bridge
         run: |
           node --check scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
@@ -100,13 +96,15 @@ jobs:
           for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo: ${id}`);
           const bridgeTags=index.match(/<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*bridge-v408\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script>/gi)||[];
           ok(bridgeTags.length===1,`uma única Bridge (${bridgeTags.length})`);
-          for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl','getUdpPort','getHeartbeatPort'])ok(bridge.includes(fn),`função: ${fn}`);
-          for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setUdpPort','setHeartbeatPort','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
+          for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl'])ok(bridge.includes(fn),`função: ${fn}`);
+          for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
+          ok(index.includes('http://192.168.1.81:8788'),'Bridge local configurada');
+          ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas UDP removidas da janela SET');
           ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET reconstruída');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
           ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido');
           for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
-          ok(!index.includes('192.168.1.71'),'IP antigo removido');
+          ok(!index.includes('192.168.1.70'),'Bridge antiga removida');
           NODE
 
       - name: Add Android
@@ -137,10 +135,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.24-SET-Reconstruido-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.25-Bridge-Local-192.168.1.81-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.24-SET-Reconstruido
-          path: release/GT7-Telemetria-V4.24-SET-Reconstruido-debug.apk
+          name: GT7-Telemetria-V4.25-Bridge-Local-192.168.1.81
+          path: release/GT7-Telemetria-V4.25-Bridge-Local-192.168.1.81-debug.apk
