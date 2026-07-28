@@ -69,7 +69,7 @@ jobs:
       - name: Install GT7 Bridge reader
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Rebuild SET for local Bridge
+      - name: Rebuild SET for editable Raspberry Bridge
         run: |
           node --check scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
@@ -98,13 +98,15 @@ jobs:
           ok(bridgeTags.length===1,`uma única Bridge (${bridgeTags.length})`);
           for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl'])ok(bridge.includes(fn),`função: ${fn}`);
           for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
-          ok(index.includes('http://192.168.1.81:8788'),'Bridge local configurada');
+          ok(index.includes('http://192.168.1.70:8788'),'Bridge Raspberry padrão configurada');
+          ok(index.includes('192.168.1.81'),'PS5 padrão configurado');
+          ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge usa URL editável com padrão do Raspberry');
+          ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 usa IP correto');
           ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas UDP removidas da janela SET');
           ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET reconstruída');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
           ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido');
           for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
-          ok(!index.includes('192.168.1.70'),'Bridge antiga removida');
           NODE
 
       - name: Add Android
@@ -135,10 +137,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.25-Bridge-Local-192.168.1.81-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.26-Bridge-Editavel-Raspberry-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.25-Bridge-Local-192.168.1.81
-          path: release/GT7-Telemetria-V4.25-Bridge-Local-192.168.1.81-debug.apk
+          name: GT7-Telemetria-V4.26-Bridge-Editavel-Raspberry
+          path: release/GT7-Telemetria-V4.26-Bridge-Editavel-Raspberry-debug.apk
