@@ -27,11 +27,46 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
-      - name: Validate Raspberry GT7 Bridge
+      - name: Validate rebuilt Raspberry GT7 Bridge V5
         run: |
           set -euo pipefail
           node --check bridge/server.js
-          node -e "const fs=require('fs');const s=fs.readFileSync('bridge/server.js','utf8');if(!s.includes('const PORT=8788')||!s.includes(\"192.168.1.81\")||!s.includes(\"'/api/live'\")||!s.includes(\"'/api/status'\"))process.exit(1)"
+          sh -n bridge/install.sh
+          node <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('bridge/server.js','utf8');
+          const ok=(v,m)=>{if(!v)throw new Error(m);console.log('OK:',m)};
+          ok((s.match(/dgram\.createSocket/g)||[]).length===1,'um único socket UDP');
+          ok(s.includes("const HEARTBEAT = Buffer.from('A', 'ascii')"),'heartbeat GT7 usa byte A');
+          ok(s.includes("socket.bind(UDP_LISTEN_PORT, '0.0.0.0')"),'socket recebe na porta UDP 33740');
+          ok(s.includes('udpSocket.send(HEARTBEAT'),'heartbeat enviado pelo mesmo socket de recepção');
+          ok(s.includes("PS5_HEARTBEAT_PORT = toPort(process.env.PS5_HEARTBEAT_PORT, 33739)"),'destino heartbeat 33739');
+          ok(s.includes("UDP_LISTEN_PORT = toPort(process.env.UDP_LISTEN_PORT, 33740)"),'recepção UDP 33740');
+          ok(s.includes("'192.168.1.81'"),'PS5 padrão 192.168.1.81');
+          ok(s.includes("'/api/restart'"),'reinício real do socket por API');
+          ok(!s.includes("packetType:'C'")&&!s.includes('Buffer.from(String(config.packetType'),'heartbeat C antigo removido');
+          NODE
+          rm -rf /tmp/gt7-bridge-ci
+          mkdir -p /tmp/gt7-bridge-ci/data
+          HTTP_PORT=18788 UDP_LISTEN_PORT=43740 PS5_HEARTBEAT_PORT=43739 BRIDGE_CONFIG_FILE=/tmp/gt7-bridge-ci/config.json BRIDGE_DATA_DIR=/tmp/gt7-bridge-ci/data node bridge/server.js >/tmp/gt7-bridge-ci/server.log 2>&1 &
+          BRIDGE_PID=$!
+          trap 'kill "$BRIDGE_PID" 2>/dev/null || true; cat /tmp/gt7-bridge-ci/server.log' EXIT
+          node <<'NODE'
+          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            let health;
+            for(let i=0;i<20;i++){
+              try{const r=await fetch('http://127.0.0.1:18788/api/health');health=await r.json();if(r.ok&&health.ok&&health.udpBound)break}catch{}
+              await wait(150);
+            }
+            if(!health||!health.ok||!health.udpBound)throw new Error('Bridge V5 não iniciou: '+JSON.stringify(health));
+            if(health.heartbeatByte!=='A'||health.sameSocket!==true)throw new Error('Heartbeat/socket inválido: '+JSON.stringify(health));
+            const restart=await fetch('http://127.0.0.1:18788/api/restart',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+            const restarted=await restart.json();
+            if(!restart.ok||!restarted.ok)throw new Error('Reinício UDP falhou: '+JSON.stringify(restarted));
+            console.log('OK: Bridge V5 iniciou, vinculou UDP e reiniciou o socket');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
 
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
@@ -69,7 +104,7 @@ jobs:
       - name: Install GT7 Bridge reader
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Rebuild SET for editable Raspberry Bridge
+      - name: Connect app to Bridge V5
         run: |
           node --check scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
@@ -100,8 +135,10 @@ jobs:
           for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
           ok(index.includes('http://192.168.1.70:8788'),'Bridge Raspberry padrão configurada');
           ok(index.includes('192.168.1.81'),'PS5 padrão configurado');
+          ok(index.includes('BRIDGE V5 NO RASPBERRY'),'janela SET usa Bridge V5');
           ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge usa URL editável com padrão do Raspberry');
           ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 usa IP correto');
+          ok(bridge.includes("http('/api/restart'"),'botão reinicia o socket UDP real');
           ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas UDP removidas da janela SET');
           ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET reconstruída');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
@@ -137,10 +174,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.26-Bridge-Editavel-Raspberry-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.27-Bridge-V5-Socket-Unico-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.26-Bridge-Editavel-Raspberry
-          path: release/GT7-Telemetria-V4.26-Bridge-Editavel-Raspberry-debug.apk
+          name: GT7-Telemetria-V4.27-Bridge-V5-Socket-Unico
+          path: release/GT7-Telemetria-V4.27-Bridge-V5-Socket-Unico-debug.apk
