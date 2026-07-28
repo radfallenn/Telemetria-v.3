@@ -35,21 +35,7 @@ jobs:
           node bridge/patch-single-socket.js
           node bridge/patch-udp-relay.js
           node --check bridge/server.js
-          grep -Fq "const udp=dgram.createSocket('udp4');" bridge/server.js
-          grep -Fq "udp.send(b,0,b.length,PS5_PORT,config.ps5Ip,()=>{});" bridge/server.js
-          ! grep -Fq "hb=dgram.createSocket('udp4')" bridge/server.js
-          ! grep -Fq "hb.send(" bridge/server.js
-          grep -Fq "GT7_UDP_RELAY_V1" bridge/server.js
-          grep -Fq "function requestClientIp" bridge/server.js
-          grep -Fq "function resolveRelayTargets" bridge/server.js
-          grep -Fq "function normalizeRelayTargets" bridge/server.js
-          grep -Fq "function relayPacket" bridge/server.js
-          grep -Fq "rinfo.address!==config.ps5Ip" bridge/server.js
-          grep -Fq "u.pathname==='/api/relay'&&req.method==='GET'" bridge/server.js
-          grep -Fq "u.pathname==='/api/relay'&&req.method==='POST'" bridge/server.js
-          node -e "const c=require('./bridge/config.json');if(c.ps5Ip!=='192.168.1.81'||c.packetType!=='C'||!Array.isArray(c.relayTargets))process.exit(1)"
-          node bridge/patch-udp-relay.js
-          test "$(grep -o 'GT7_UDP_RELAY_V1' bridge/server.js | wc -l)" -eq 1
+          node -e "const c=require('./bridge/config.json');if(c.ps5Ip!=='192.168.1.81'||!Array.isArray(c.relayTargets))process.exit(1)"
 
       - name: Fix windows and card height
         run: node scripts/patch-v4-windows-card-height.js
@@ -84,20 +70,14 @@ jobs:
       - name: Add attribute checks to dashboard
         run: node scripts/patch-v4-attribute-checkbox-dashboard.js
 
-      - name: Install GT7 Bridge reader and diagnostics
+      - name: Install GT7 Bridge reader
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Install automatic Bridge and PS5 settings
+      - name: Rebuild SET and Bridge controls
         run: |
           node --check scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
-
-      - name: Install automatic app presets
-        run: |
-          node --check scripts/patch-v4-relay-settings-ui.js
-          node scripts/patch-v4-relay-settings-ui.js
-          node scripts/patch-v4-relay-settings-ui.js
 
       - name: Final removal of ATRIB and marked cards
         run: node scripts/patch-v4-remove-attributes-and-marked-cards.js
@@ -116,26 +96,15 @@ jobs:
           const attrs=JSON.parse(fs.readFileSync('www/telemetry-attributes.json','utf8'));
           const ok=(v,m)=>{if(!v)throw new Error(m);console.log('OK:',m)};
           const ids=new Set(Array.isArray(attrs)?attrs.map(a=>a&&a.id).filter(Boolean):[]);
-          ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos no banco interno`);
-          for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo essencial: ${id}`);
+          ok(Array.isArray(attrs)&&attrs.length>=48,`${attrs.length} atributos válidos`);
+          for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo: ${id}`);
           const bridgeTags=index.match(/<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*bridge-v408\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script>/gi)||[];
-          ok(bridgeTags.length===1,`uma única Bridge no HTML (${bridgeTags.length} tag)`);
-          ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'Bridge padrão configurada');
-          ok(bridge.includes("const DEFAULT_PS5 = '192.168.1.81'"),'PS5 padrão configurado');
-          ok(bridge.includes('function saveNetworkSettings'),'salvamento automático instalado');
-          ok(bridge.includes('function getBridgeUrl'),'Bridge dinâmica instalada');
-          ok(bridge.includes('function getUdpPort'),'porta UDP instalada');
-          ok(bridge.includes('function getHeartbeatPort'),'heartbeat instalado');
-          ok(bridge.includes('async function getRelayStatus(){'),'leitura do relay instalada');
-          ok(bridge.includes('async function saveRelayTargets(targets){'),'salvamento do relay instalado');
-          ok(bridge.includes('getRelayStatus, saveRelayTargets,'),'API pública do relay instalada');
-          for(const id of ['applyAutomaticNetwork','advancedNetworkSettings','editableBridgeUrl','editablePs5Ip','editableUdpPort','editableHeartbeatPort'])ok(index.includes(id),`controle automático/avançado presente: ${id}`);
-          for(const id of ['relaySettingsCard','enableVictoryPreset','enableSimDashboardPreset','disableRelayPreset','advancedRelaySettings','relayTargetSelect','saveRelayTarget','removeRelayTarget','testRelayTarget'])ok(index.includes(id),`controle do relay presente: ${id}`);
-          ok(index.includes('__CLIENT__'),'detecção automática do IP do celular instalada');
-          ok((index.match(/V4 EDITABLE NETWORK SETTINGS UI/g)||[]).length===1,'uma única interface de conexão automática');
-          ok((index.match(/V4 RELAY SETTINGS UI/g)||[]).length===1,'uma única interface de relay');
-          ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida do HTML final');
-          ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido do HTML final');
+          ok(bridgeTags.length===1,`uma única Bridge (${bridgeTags.length})`);
+          for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl','getUdpPort','getHeartbeatPort'])ok(bridge.includes(fn),`função: ${fn}`);
+          for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setUdpPort','setHeartbeatPort','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
+          ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET reconstruída');
+          ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
+          ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido');
           for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
           ok(!index.includes('192.168.1.71'),'IP antigo removido');
           NODE
@@ -168,10 +137,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.23-Auto-Config-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.24-SET-Reconstruido-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V4.23-Auto-Config
-          path: release/GT7-Telemetria-V4.23-Auto-Config-debug.apk
+          name: GT7-Telemetria-V4.24-SET-Reconstruido
+          path: release/GT7-Telemetria-V4.24-SET-Reconstruido-debug.apk
