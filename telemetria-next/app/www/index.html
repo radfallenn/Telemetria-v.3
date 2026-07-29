@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#000000">
   <title>GT7 Telemetria Next</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="fuel-heatmap.css">
 </head>
 <body>
   <main class="app-shell">
@@ -46,9 +47,9 @@
           <strong id="totalTime">--</strong>
         </article>
 
-        <article class="data-card full fuel-card">
+        <article id="fuelCard" class="data-card full fuel-card">
           <div class="card-row"><span class="card-title">COMBUSTÍVEL</span><strong id="fuel">--%</strong></div>
-          <div id="fuelSegments" class="fuel-segments"></div>
+          <div id="fuelSegments" class="fuel-segments" role="progressbar" aria-label="Nível de combustível" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
         </article>
 
         <article class="data-card half accent-cyan">
@@ -142,5 +143,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="fuel-heatmap.js"></script>
 </body>
 </html>
