@@ -60,7 +60,7 @@
       <article class="card metric"><span>VOLTA</span><strong id="lapNumber">0 / 0</strong></article>
       <article class="card metric"><span>COMBUSTÍVEL</span><strong id="fuel">--%</strong></article>
       <article class="card metric"><span>VELOCIDADE MÁX.</span><strong id="maxSpeed">0</strong><small>KM/H</small></article>
-      <article class="card metric"><span>PACOTES</span><strong id="packetRate">0/s</strong></article>
+      <article class="card metric"><span>PACOTES GT7</span><strong id="packetRate">0/s</strong></article>
     </section>
 
     <section class="card tyre-card">
@@ -73,16 +73,17 @@
       </div>
     </section>
 
-    <footer><span id="footerState">PS5 não configurado</span><span id="updatedAt">--</span></footer>
+    <footer><span id="footerState">Bridge ainda não conectada</span><span id="updatedAt">--</span></footer>
   </main>
 
   <div id="settingsModal" class="modal" aria-hidden="true">
     <div class="modal-panel">
-      <div class="modal-head"><div><span class="eyebrow">CONEXÃO</span><h2>Configurações</h2></div><button id="closeSettings" class="icon-button">×</button></div>
+      <div class="modal-head"><div><span class="eyebrow">CONEXÃO E DIAGNÓSTICO</span><h2>Configurações</h2></div><button id="closeSettings" class="icon-button">×</button></div>
       <label>URL da Bridge<input id="bridgeUrl" type="url" placeholder="http://192.168.1.70:8790"></label>
       <label>IP do PS5<input id="ps5Ip" inputmode="decimal" placeholder="192.168.1.81"></label>
-      <div id="settingsResult" class="settings-result">Preencha os dados da rede local.</div>
-      <button id="testConnection" class="secondary-button">TESTAR CONEXÃO</button>
+      <div id="settingsResult" class="settings-result">Teste a Bridge para verificar HTTP, UDP e pacotes do GT7.</div>
+      <button id="testConnection" class="secondary-button">TESTAR BRIDGE</button>
+      <button id="restartBridge" class="secondary-button">REINICIAR RECEPÇÃO UDP</button>
       <button id="saveConnection" class="primary-button">SALVAR E CONECTAR</button>
     </div>
   </div>
