@@ -127,16 +127,24 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate circular cockpit application
+      - name: Validate circular cockpit and fuel heatmap
         run: |
           set -euo pipefail
           test -s www/index.html
           test -s www/styles.css
           test -s www/app.js
+          test -s www/fuel-heatmap.css
+          test -s www/fuel-heatmap.js
           node --check www/app.js
+          node --check www/fuel-heatmap.js
           grep -q 'gauge-stage' www/index.html
           grep -q 'rpmRing' www/index.html
           grep -q 'bottom-nav' www/index.html
+          grep -q 'fuel-heatmap.css' www/index.html
+          grep -q 'fuel-heatmap.js' www/index.html
+          grep -q 'const SEGMENT_COUNT = 20' www/fuel-heatmap.js
+          grep -q 'const CRITICAL_SEGMENTS = 10' www/fuel-heatmap.js
+          grep -q 'fuel-cell-alert' www/fuel-heatmap.css
           grep -q 'buildGauge' www/app.js
           grep -q 'http://192.168.1.70:8790' www/app.js
           grep -q 'Bridge conectada' www/app.js
@@ -174,10 +182,10 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.4-Cockpit-Circular-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.5-Combustivel-Heatmap-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-Next-v0.4-Cockpit-Circular
-          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.4-Cockpit-Circular-debug.apk
+          name: GT7-Telemetria-Next-v0.5-Combustivel-Heatmap
+          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.5-Combustivel-Heatmap-debug.apk
