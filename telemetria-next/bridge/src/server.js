@@ -7,12 +7,14 @@ const path = require('node:path');
 const { WebSocketServer, WebSocket } = require('ws');
 const { decodeEncryptedPacket } = require('./protocol');
 
+const VERSION = '0.2.0';
 const HTTP_PORT = Number(process.env.HTTP_PORT || 8790);
 const UDP_RECEIVE_PORT = Number(process.env.UDP_RECEIVE_PORT || 33740);
 const PS5_HEARTBEAT_PORT = Number(process.env.PS5_HEARTBEAT_PORT || 33739);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const CONFIG_FILE = process.env.CONFIG_FILE || path.join(DATA_DIR, 'config.json');
 const HEARTBEAT = Buffer.from('A', 'ascii');
+const STARTED_AT = Date.now();
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -40,24 +42,41 @@ let udpSocket = null;
 let heartbeatTimer = null;
 let statusTimer = null;
 let lastPacketAt = 0;
+let lastRawPacketAt = 0;
+let lastHeartbeatAt = 0;
+let lastHeartbeatError = null;
+let lastUdpError = null;
 let packetCounter = 0;
+let rawPacketCounter = 0;
 let packetRate = 0;
+let rawPacketRate = 0;
 let decodeErrors = 0;
 let maxSpeedKmh = 0;
 let telemetry = null;
 let lastBroadcastAt = 0;
 
+const isUdpBound = () => Boolean(udpSocket);
+const isTelemetryReceiving = () => Date.now() - lastPacketAt < 2500;
+
 const state = () => ({
   ok: true,
   schemaVersion: 1,
-  bridge: { name: 'GT7 Bridge Next', version: '0.1.0' },
+  bridge: { name: 'GT7 Bridge Next', version: VERSION, uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000) },
   config: { ps5Ip: config.ps5Ip, udpReceivePort: UDP_RECEIVE_PORT, ps5HeartbeatPort: PS5_HEARTBEAT_PORT, httpPort: HTTP_PORT },
-  udpBound: Boolean(udpSocket),
-  telemetryReceiving: Date.now() - lastPacketAt < 2500,
+  udpBound: isUdpBound(),
+  telemetryReceiving: isTelemetryReceiving(),
   packetRate,
+  rawPacketRate,
   decodeErrors,
   maxSpeedKmh,
   telemetry,
+  diagnostics: {
+    lastPacketAt: lastPacketAt || null,
+    lastRawPacketAt: lastRawPacketAt || null,
+    lastHeartbeatAt: lastHeartbeatAt || null,
+    lastHeartbeatError,
+    lastUdpError
+  },
   updatedAt: new Date().toISOString()
 });
 
@@ -100,55 +119,90 @@ function broadcast(force = false) {
   }
 }
 
-function stopUdp() {
+function stopHeartbeat() {
   clearInterval(heartbeatTimer);
   heartbeatTimer = null;
-  if (udpSocket) {
+}
+
+function closeUdp() {
+  stopHeartbeat();
+  return new Promise((resolve) => {
+    if (!udpSocket) {
+      resolve();
+      return;
+    }
     const current = udpSocket;
     udpSocket = null;
-    try { current.close(); } catch { /* já fechado */ }
-  }
+    current.removeAllListeners('message');
+    try {
+      current.close(() => resolve());
+    } catch {
+      resolve();
+    }
+  });
 }
 
 function sendHeartbeat() {
   if (!udpSocket || !validIpv4(config.ps5Ip)) return;
   udpSocket.send(HEARTBEAT, PS5_HEARTBEAT_PORT, config.ps5Ip, (error) => {
-    if (error) console.error('[heartbeat]', error.message);
+    if (error) {
+      lastHeartbeatError = error.message;
+      console.error('[heartbeat]', error.message);
+    } else {
+      lastHeartbeatAt = Date.now();
+      lastHeartbeatError = null;
+    }
   });
 }
 
-function startUdp() {
-  stopUdp();
+async function startUdp() {
+  await closeUdp();
+  lastUdpError = null;
+
   const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
   socket.on('error', (error) => {
+    lastUdpError = error.message;
     console.error('[udp]', error.message);
-    if (udpSocket === socket) stopUdp();
+    if (udpSocket === socket) udpSocket = null;
+    stopHeartbeat();
     broadcast(true);
   });
 
   socket.on('message', (packet) => {
-    packetCounter += 1;
+    rawPacketCounter += 1;
+    lastRawPacketAt = Date.now();
     const decoded = decodeEncryptedPacket(packet);
     if (!decoded) {
       decodeErrors += 1;
       return;
     }
+    packetCounter += 1;
     lastPacketAt = Date.now();
     maxSpeedKmh = Math.max(maxSpeedKmh, decoded.speedKmh || 0);
     telemetry = { ...decoded, maxSpeedKmh };
     broadcast(false);
   });
 
-  socket.on('listening', () => {
-    udpSocket = socket;
-    console.log(`[udp] ouvindo 0.0.0.0:${UDP_RECEIVE_PORT}; PS5 ${config.ps5Ip}:${PS5_HEARTBEAT_PORT}`);
-    sendHeartbeat();
-    heartbeatTimer = setInterval(sendHeartbeat, 1000);
-    broadcast(true);
+  await new Promise((resolve, reject) => {
+    const fail = (error) => {
+      socket.off('listening', ready);
+      reject(error);
+    };
+    const ready = () => {
+      socket.off('error', fail);
+      resolve();
+    };
+    socket.once('error', fail);
+    socket.once('listening', ready);
+    socket.bind(UDP_RECEIVE_PORT, '0.0.0.0');
   });
 
-  socket.bind(UDP_RECEIVE_PORT, '0.0.0.0');
+  udpSocket = socket;
+  console.log(`[udp] ouvindo 0.0.0.0:${UDP_RECEIVE_PORT}; PS5 ${config.ps5Ip}:${PS5_HEARTBEAT_PORT}`);
+  sendHeartbeat();
+  heartbeatTimer = setInterval(sendHeartbeat, 1000);
+  broadcast(true);
 }
 
 const server = http.createServer(async (request, response) => {
@@ -160,16 +214,30 @@ const server = http.createServer(async (request, response) => {
 
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
 
-  if (request.method === 'GET' && url.pathname === '/api/health') {
+  if (request.method === 'GET' && url.pathname === '/') {
     sendJson(response, 200, {
       ok: true,
       name: 'GT7 Bridge Next',
-      version: '0.1.0',
+      version: VERSION,
+      endpoints: ['/api/health', '/api/state', '/api/config', '/api/restart', '/ws']
+    });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/health') {
+    const current = state();
+    sendJson(response, 200, {
+      ok: true,
+      name: current.bridge.name,
+      version: current.bridge.version,
       httpPort: HTTP_PORT,
-      udpBound: Boolean(udpSocket),
-      telemetryReceiving: Date.now() - lastPacketAt < 2500,
-      packetRate,
-      ps5Ip: config.ps5Ip
+      udpBound: current.udpBound,
+      telemetryReceiving: current.telemetryReceiving,
+      packetRate: current.packetRate,
+      rawPacketRate: current.rawPacketRate,
+      decodeErrors: current.decodeErrors,
+      ps5Ip: config.ps5Ip,
+      diagnostics: current.diagnostics
     });
     return;
   }
@@ -193,7 +261,8 @@ const server = http.createServer(async (request, response) => {
       }
       config = { ps5Ip: String(body.ps5Ip).trim() };
       saveConfig(config);
-      startUdp();
+      sendHeartbeat();
+      broadcast(true);
       sendJson(response, 200, { ok: true, config: state().config });
     } catch (error) {
       sendJson(response, 400, { ok: false, error: error.message });
@@ -202,8 +271,13 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/restart') {
-    startUdp();
-    sendJson(response, 200, { ok: true, state: state() });
+    try {
+      await startUdp();
+      sendJson(response, 200, { ok: true, state: state() });
+    } catch (error) {
+      lastUdpError = error.message;
+      sendJson(response, 500, { ok: false, error: error.message, state: state() });
+    }
     return;
   }
 
@@ -226,15 +300,21 @@ server.on('upgrade', (request, socket, head) => {
   });
 });
 
+server.on('error', (error) => {
+  console.error('[http]', error.message);
+});
+
 statusTimer = setInterval(() => {
   packetRate = packetCounter;
+  rawPacketRate = rawPacketCounter;
   packetCounter = 0;
+  rawPacketCounter = 0;
   broadcast(true);
 }, 1000);
 
-function shutdown() {
+async function shutdown() {
   clearInterval(statusTimer);
-  stopUdp();
+  await closeUdp();
   for (const client of webSocketServer.clients) client.close();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 2000).unref();
@@ -243,7 +323,10 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-startUdp();
+startUdp().catch((error) => {
+  lastUdpError = error.message;
+  console.error('[udp:start]', error.message);
+});
 server.listen(HTTP_PORT, '0.0.0.0', () => {
-  console.log(`[http] GT7 Bridge Next em http://0.0.0.0:${HTTP_PORT}`);
+  console.log(`[http] GT7 Bridge Next v${VERSION} em http://0.0.0.0:${HTTP_PORT}`);
 });
