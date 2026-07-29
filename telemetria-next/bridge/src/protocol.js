@@ -2,7 +2,8 @@
 
 const KEY = Buffer.from('Simulator Interface Packet GT7 ver 0.0', 'ascii').subarray(0, 32);
 const MAGIC = 0x47375330;
-const SUPPORTED_LENGTHS = new Set([296, 316, 344, 368]);
+const MIN_PACKET_LENGTH = 296;
+const MAX_PACKET_LENGTH = 512;
 
 function readSafely(reader, fallback = 0) {
   try {
@@ -78,11 +79,11 @@ function salsa20Xor(input, key, nonce) {
 }
 
 function decryptPacket(encrypted) {
-  if (!Buffer.isBuffer(encrypted) || encrypted.length < 0x44 || !SUPPORTED_LENGTHS.has(encrypted.length)) return null;
+  if (!Buffer.isBuffer(encrypted) || encrypted.length < MIN_PACKET_LENGTH || encrypted.length > MAX_PACKET_LENGTH) return null;
   const seed = readSafely(() => encrypted.readUInt32LE(0x40), -1);
   if (seed < 0) return null;
 
-  for (const constant of [0xDEADBEAF, 0xDEADBEEF]) {
+  for (const constant of [0xDEADBEAF, 0xDEADBEEF, 0x55FABB4F]) {
     const nonce = Buffer.alloc(8);
     nonce.writeUInt32LE((seed ^ constant) >>> 0, 0);
     nonce.writeUInt32LE(seed >>> 0, 4);
@@ -97,7 +98,7 @@ function packetVersion(length) {
   if (length === 316) return 'B';
   if (length === 344) return 'B+';
   if (length === 368) return 'C';
-  return '?';
+  return `L${length}`;
 }
 
 function decodePacket(packet) {
