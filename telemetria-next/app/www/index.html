@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#02070b">
+  <title>GT7 Telemetria Next</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">STUDIO RAD</div>
+        <h1>GT7 COCKPIT</h1>
+      </div>
+      <div class="top-actions">
+        <button id="openSettings" class="icon-button" aria-label="Configurações">⚙</button>
+        <div class="connection-pill">
+          <span id="statusDot" class="status-dot"></span>
+          <div><strong id="connectionStatus">OFF</strong><small id="latency">-- ms</small></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="card bridge-card">
+      <span>BRIDGE NEXT</span>
+      <strong id="bridgeLabel">Aguardando conexão</strong>
+    </section>
+
+    <section class="card hero-card">
+      <div class="hero-value">
+        <span>VELOCIDADE</span>
+        <strong id="speed">0</strong>
+        <small>KM/H</small>
+      </div>
+      <div class="hero-value gear-block">
+        <span>MARCHA</span>
+        <strong id="gear">N</strong>
+      </div>
+    </section>
+
+    <section class="card rpm-card">
+      <div class="metric-title"><span>RPM</span><strong id="rpm">0</strong></div>
+      <div id="rpmSegments" class="segments" aria-label="Faixa de RPM"></div>
+      <div class="scale"><span>0</span><span id="rpmLimit">9000</span></div>
+    </section>
+
+    <section class="grid two-columns">
+      <article class="card metric cyan">
+        <span>ACELERADOR</span><strong id="throttle">0%</strong>
+        <div class="bar"><i id="throttleBar"></i></div>
+      </article>
+      <article class="card metric pink">
+        <span>FREIO</span><strong id="brake">0%</strong>
+        <div class="bar"><i id="brakeBar"></i></div>
+      </article>
+      <article class="card metric"><span>MELHOR VOLTA</span><strong id="bestLap">--:--.---</strong></article>
+      <article class="card metric"><span>ÚLTIMA VOLTA</span><strong id="lastLap">--:--.---</strong></article>
+      <article class="card metric"><span>VOLTA</span><strong id="lapNumber">0 / 0</strong></article>
+      <article class="card metric"><span>COMBUSTÍVEL</span><strong id="fuel">--%</strong></article>
+      <article class="card metric"><span>VELOCIDADE MÁX.</span><strong id="maxSpeed">0</strong><small>KM/H</small></article>
+      <article class="card metric"><span>PACOTES</span><strong id="packetRate">0/s</strong></article>
+    </section>
+
+    <section class="card tyre-card">
+      <div class="metric-title"><span>TEMPERATURA DOS PNEUS</span></div>
+      <div class="tyre-grid">
+        <div><span>DE</span><strong id="tyreFL">--°</strong></div>
+        <div><span>DD</span><strong id="tyreFR">--°</strong></div>
+        <div><span>TE</span><strong id="tyreRL">--°</strong></div>
+        <div><span>TD</span><strong id="tyreRR">--°</strong></div>
+      </div>
+    </section>
+
+    <footer><span id="footerState">PS5 não configurado</span><span id="updatedAt">--</span></footer>
+  </main>
+
+  <div id="settingsModal" class="modal" aria-hidden="true">
+    <div class="modal-panel">
+      <div class="modal-head"><div><span class="eyebrow">CONEXÃO</span><h2>Configurações</h2></div><button id="closeSettings" class="icon-button">×</button></div>
+      <label>URL da Bridge<input id="bridgeUrl" type="url" placeholder="http://192.168.1.70:8790"></label>
+      <label>IP do PS5<input id="ps5Ip" inputmode="decimal" placeholder="192.168.1.81"></label>
+      <div id="settingsResult" class="settings-result">Preencha os dados da rede local.</div>
+      <button id="testConnection" class="secondary-button">TESTAR CONEXÃO</button>
+      <button id="saveConnection" class="primary-button">SALVAR E CONECTAR</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
