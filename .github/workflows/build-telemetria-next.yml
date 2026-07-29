@@ -38,7 +38,7 @@ jobs:
           bash -n install-casaos.sh
           docker compose -f docker-compose.yml config >/dev/null
           ! grep -q 'npm install' Dockerfile
-          ! grep -q 'require.(.ws.' src/server.js
+          ! grep -q "require('ws')" src/server.js
 
       - name: Start isolated Bridge test
         env:
@@ -127,19 +127,22 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate web application
+      - name: Validate circular cockpit application
         run: |
           set -euo pipefail
           test -s www/index.html
           test -s www/styles.css
           test -s www/app.js
           node --check www/app.js
-          grep -q 'GT7 COCKPIT' www/index.html
-          grep -q 'restartBridge' www/index.html
+          grep -q 'gauge-stage' www/index.html
+          grep -q 'rpmRing' www/index.html
+          grep -q 'bottom-nav' www/index.html
+          grep -q 'buildGauge' www/app.js
           grep -q 'http://192.168.1.70:8790' www/app.js
           grep -q 'Bridge conectada' www/app.js
           ! grep -q 'bridge-v408.js' www/index.html
           ! grep -q 'patch-v4' www/index.html
+          ! grep -q 'new WebSocket' www/app.js
 
       - name: Generate Android project
         run: npx cap add android
@@ -171,10 +174,10 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.2-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.4-Cockpit-Circular-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-Next-v0.2
-          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.2-debug.apk
+          name: GT7-Telemetria-Next-v0.4-Cockpit-Circular
+          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.4-Cockpit-Circular-debug.apk
