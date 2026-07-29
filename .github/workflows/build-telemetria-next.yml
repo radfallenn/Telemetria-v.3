@@ -29,16 +29,16 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Validate Bridge source and installers
+      - name: Validate dependency-free Bridge
         run: |
           set -euo pipefail
-          npm run check
+          node --check src/protocol.js
+          node --check src/server.js
           bash -n install.sh
           bash -n install-casaos.sh
           docker compose -f docker-compose.yml config >/dev/null
+          ! grep -q 'npm install' Dockerfile
+          ! grep -q 'require.(.ws.' src/server.js
 
       - name: Start isolated Bridge test
         env:
@@ -64,13 +64,11 @@ jobs:
               } catch {}
               await wait(150);
             }
-            if (!health?.ok || !health?.udpBound || health.httpPort !== 18790 || health.version !== '0.2.0') {
+            if (!health?.ok || !health?.udpBound || health.httpPort !== 18790 || health.version !== '0.3.0') {
               throw new Error(`Bridge inválida: ${JSON.stringify(health)}`);
             }
-            const stateResponse = await fetch('http://127.0.0.1:18790/api/state');
-            const state = await stateResponse.json();
-            if (!stateResponse.ok || state.schemaVersion !== 1 || state.bridge?.name !== 'GT7 Bridge Next') {
-              throw new Error(`Contrato inválido: ${JSON.stringify(state)}`);
+            if (health.transport !== 'http-polling') {
+              throw new Error(`Transporte inválido: ${JSON.stringify(health)}`);
             }
             const restartResponse = await fetch('http://127.0.0.1:18790/api/restart', {
               method: 'POST',
@@ -81,26 +79,29 @@ jobs:
             if (!restartResponse.ok || !restart.ok || !restart.state?.udpBound) {
               throw new Error(`Reinício UDP inválido: ${JSON.stringify(restart)}`);
             }
-            console.log('OK: Bridge Next v0.2 iniciou e reiniciou UDP com segurança.');
+            console.log('OK: Bridge Next v0.3 sem npm iniciou e reiniciou UDP.');
           })().catch((error) => {
             console.error(error);
             process.exit(1);
           });
           NODE
 
+      - name: Validate offline Docker build
+        run: docker build --network=none -t gt7-bridge-next:0.3 .
+
       - name: Prepare CasaOS Bridge package
         run: |
           set -euo pipefail
-          rm -rf release/GT7-Bridge-Next-v0.2-CasaOS
-          mkdir -p release/GT7-Bridge-Next-v0.2-CasaOS
-          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-Next-v0.2-CasaOS/
-          cp -R src release/GT7-Bridge-Next-v0.2-CasaOS/src
+          rm -rf release/GT7-Bridge-Next-v0.3-CasaOS
+          mkdir -p release/GT7-Bridge-Next-v0.3-CasaOS
+          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-Next-v0.3-CasaOS/
+          cp -R src release/GT7-Bridge-Next-v0.3-CasaOS/src
 
       - name: Upload CasaOS Bridge
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Bridge-Next-v0.2-CasaOS
-          path: telemetria-next/bridge/release/GT7-Bridge-Next-v0.2-CasaOS
+          name: GT7-Bridge-Next-v0.3-CasaOS
+          path: telemetria-next/bridge/release/GT7-Bridge-Next-v0.3-CasaOS
 
   build-apk:
     runs-on: ubuntu-latest
