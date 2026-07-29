@@ -8,7 +8,7 @@ let settings = loadSettings();
 let socket = null;
 let reconnectTimer = null;
 let pollTimer = null;
-let lastMessageAt = 0;
+let lastBridgeAt = 0;
 let maxSpeed = 0;
 
 function loadSettings() {
@@ -55,11 +55,15 @@ function renderTyre(id, value) {
 }
 
 function normalize(payload) {
-  const data = payload?.telemetry || payload?.state?.telemetry || payload || {};
+  const root = payload?.state || payload || {};
+  const data = root.telemetry || payload?.telemetry || {};
   const tyres = data.tyres || data.tyreTemp || data.advanced?.tyreTemp || {};
   return {
-    connected: Boolean(payload?.telemetryReceiving ?? payload?.state?.telemetryReceiving ?? data.connected),
-    bridgeName: payload?.bridge?.name || payload?.name || 'GT7 Bridge Next',
+    bridgeOnline: Boolean(root.ok ?? true),
+    telemetryReceiving: Boolean(root.telemetryReceiving ?? data.connected),
+    udpBound: Boolean(root.udpBound),
+    bridgeName: root.bridge?.name || root.name || 'GT7 Bridge Next',
+    bridgeVersion: root.bridge?.version || root.version || '',
     speed: Number(data.speedKmh ?? data.speed ?? 0),
     rpm: Number(data.rpm ?? 0),
     rpmLimit: Number(data.rpmLimit ?? data.maxRpm ?? 9000),
@@ -71,17 +75,27 @@ function normalize(payload) {
     totalLaps: Number(data.totalLaps ?? 0),
     bestLapMs: Number(data.bestLapMs ?? 0),
     lastLapMs: Number(data.lastLapMs ?? 0),
-    packetRate: Number(payload?.packetRate ?? payload?.state?.packetRate ?? data.packetRate ?? 0),
+    packetRate: Number(root.packetRate ?? data.packetRate ?? 0),
+    rawPacketRate: Number(root.rawPacketRate ?? 0),
+    decodeErrors: Number(root.decodeErrors ?? 0),
     tyres,
-    ps5Ip: payload?.config?.ps5Ip || payload?.state?.config?.ps5Ip || settings.ps5Ip,
-    updatedAt: payload?.updatedAt || payload?.state?.updatedAt || new Date().toISOString()
+    ps5Ip: root.config?.ps5Ip || root.ps5Ip || settings.ps5Ip,
+    diagnostics: root.diagnostics || {},
+    updatedAt: root.updatedAt || new Date().toISOString()
   };
+}
+
+function setBridgeConnection(online, latency = null) {
+  $('statusDot').classList.toggle('online', Boolean(online));
+  text('connectionStatus', online ? 'BRIDGE' : 'OFF');
+  text('latency', Number.isFinite(latency) ? `${Math.round(latency)} ms` : '-- ms');
 }
 
 function render(payload, latency = null) {
   const data = normalize(payload);
-  lastMessageAt = Date.now();
+  lastBridgeAt = Date.now();
   maxSpeed = Math.max(maxSpeed, data.speed || 0);
+
   text('speed', Math.round(clamp(data.speed, 0, 700)));
   text('gear', String(data.gear || 'N'));
   text('rpm', Math.round(clamp(data.rpm, 0, 25000)));
@@ -100,20 +114,27 @@ function render(payload, latency = null) {
   renderTyre('tyreFR', data.tyres.FR ?? data.tyres.fr);
   renderTyre('tyreRL', data.tyres.RL ?? data.tyres.rl);
   renderTyre('tyreRR', data.tyres.RR ?? data.tyres.rr);
-  text('bridgeLabel', data.bridgeName);
-  text('footerState', data.connected ? `Recebendo GT7 de ${data.ps5Ip}` : `Aguardando GT7 em ${data.ps5Ip}`);
-  text('updatedAt', new Date(data.updatedAt).toLocaleTimeString('pt-BR'));
-  setConnection(data.connected, latency);
-}
 
-function setConnection(online, latency = null) {
-  $('statusDot').classList.toggle('online', Boolean(online));
-  text('connectionStatus', online ? 'OK' : 'OFF');
-  text('latency', Number.isFinite(latency) ? `${Math.round(latency)} ms` : '-- ms');
+  const udpText = data.udpBound ? 'UDP ATIVO' : 'UDP INATIVO';
+  const versionText = data.bridgeVersion ? ` v${data.bridgeVersion}` : '';
+  text('bridgeLabel', `${data.bridgeName}${versionText} · ${udpText}`);
+
+  if (!data.udpBound) {
+    text('footerState', 'Bridge conectada, mas a porta UDP 33740 está inativa');
+  } else if (data.telemetryReceiving) {
+    text('footerState', `Recebendo GT7 de ${data.ps5Ip}`);
+  } else if (data.rawPacketRate > 0 && data.packetRate === 0) {
+    text('footerState', `Pacotes recebidos, mas não decodificados · erros ${data.decodeErrors}`);
+  } else {
+    text('footerState', `Bridge conectada · aguardando GT7 de ${data.ps5Ip}`);
+  }
+
+  text('updatedAt', new Date(data.updatedAt).toLocaleTimeString('pt-BR'));
+  setBridgeConnection(true, latency);
 }
 
 function httpBase() {
-  return String(settings.bridgeUrl || DEFAULTS.bridgeUrl).replace(/\/$/, '');
+  return String(settings.bridgeUrl || DEFAULTS.bridgeUrl).trim().replace(/\/$/, '');
 }
 
 function websocketUrl() {
@@ -136,6 +157,12 @@ function stopConnections() {
   }
 }
 
+function markBridgeOffline() {
+  setBridgeConnection(false);
+  text('bridgeLabel', `Sem resposta em ${httpBase()}`);
+  text('footerState', 'Abra as configurações e teste a Bridge no Raspberry');
+}
+
 function startPolling() {
   if (pollTimer) return;
   const poll = async () => {
@@ -145,7 +172,7 @@ function startPolling() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       render(await response.json(), performance.now() - started);
     } catch {
-      if (Date.now() - lastMessageAt > 2500) setConnection(false);
+      if (Date.now() - lastBridgeAt > 2500) markBridgeOffline();
     }
   };
   poll();
@@ -154,13 +181,13 @@ function startPolling() {
 
 function connect() {
   stopConnections();
-  text('bridgeLabel', 'Conectando...');
+  text('bridgeLabel', `Conectando em ${httpBase()}...`);
   try {
     socket = new WebSocket(websocketUrl());
     socket.onopen = () => {
       clearInterval(pollTimer);
       pollTimer = null;
-      text('bridgeLabel', 'GT7 Bridge Next');
+      setBridgeConnection(true);
     };
     socket.onmessage = (event) => {
       try { render(JSON.parse(event.data)); } catch { /* pacote inválido é ignorado */ }
@@ -177,18 +204,56 @@ function connect() {
   }
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function healthSummary(body, latency) {
+  const udp = body.udpBound ? 'UDP ativo' : 'UDP inativo';
+  const gt7 = body.telemetryReceiving ? `GT7 ${body.packetRate || 0}/s` : 'GT7 sem dados';
+  const raw = body.rawPacketRate > 0 ? `brutos ${body.rawPacketRate}/s` : 'sem pacotes brutos';
+  return `Bridge v${body.version || '?'} encontrada em ${Math.round(latency)} ms · ${udp} · ${gt7} · ${raw} · PS5 ${body.ps5Ip || settings.ps5Ip}.`;
+}
+
 async function testConnection() {
   const result = $('settingsResult');
-  result.textContent = 'Testando a Bridge...';
+  result.textContent = 'Testando HTTP, UDP e recepção do GT7...';
   const started = performance.now();
   try {
-    const base = String($('bridgeUrl').value || '').replace(/\/$/, '');
-    const response = await fetch(`${base}/api/health`, { cache: 'no-store' });
+    const base = String($('bridgeUrl').value || '').trim().replace(/\/$/, '');
+    const response = await fetchWithTimeout(`${base}/api/health`, { cache: 'no-store' });
     const body = await response.json();
     if (!response.ok || !body.ok) throw new Error(body.error || `HTTP ${response.status}`);
-    result.textContent = `Bridge encontrada em ${Math.round(performance.now() - started)} ms. UDP: ${body.udpBound ? 'ativo' : 'inativo'}.`;
+    result.textContent = healthSummary(body, performance.now() - started);
+    if (body.ps5Ip) $('ps5Ip').value = body.ps5Ip;
   } catch (error) {
-    result.textContent = `Falha: ${error.message}`;
+    const message = error.name === 'AbortError' ? 'tempo esgotado' : error.message;
+    result.textContent = `Bridge não encontrada: ${message}. Confirme se o serviço está instalado no Raspberry e se a porta 8790 está livre.`;
+  }
+}
+
+async function restartBridge() {
+  const result = $('settingsResult');
+  result.textContent = 'Reiniciando a recepção UDP...';
+  try {
+    const base = String($('bridgeUrl').value || '').trim().replace(/\/$/, '');
+    const response = await fetchWithTimeout(`${base}/api/restart`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    }, 4000);
+    const body = await response.json();
+    if (!response.ok || !body.ok) throw new Error(body.error || `HTTP ${response.status}`);
+    result.textContent = `UDP reiniciado. Porta 33740: ${body.state?.udpBound ? 'ativa' : 'inativa'}.`;
+    connect();
+  } catch (error) {
+    result.textContent = `Falha ao reiniciar UDP: ${error.message}`;
   }
 }
 
@@ -199,21 +264,22 @@ async function saveAndConnect() {
   };
   saveSettings();
   const result = $('settingsResult');
-  result.textContent = 'Salvando configuração na Bridge...';
+  result.textContent = 'URL salva no APK. Enviando o IP do PS5 para a Bridge...';
+  maxSpeed = 0;
+  connect();
+
   try {
-    const response = await fetch(`${httpBase()}/api/config`, {
+    const response = await fetchWithTimeout(`${httpBase()}/api/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ps5Ip: settings.ps5Ip })
     });
     const body = await response.json();
     if (!response.ok || !body.ok) throw new Error(body.error || `HTTP ${response.status}`);
-    result.textContent = 'Configuração salva. Reconectando...';
-    closeSettings();
-    maxSpeed = 0;
-    connect();
+    result.textContent = 'Configuração salva na Bridge. Reconectando...';
+    setTimeout(closeSettings, 500);
   } catch (error) {
-    result.textContent = `Não foi possível salvar no Raspberry: ${error.message}`;
+    result.textContent = `URL salva no APK, mas a Bridge não respondeu: ${error.message}`;
   }
 }
 
@@ -233,6 +299,7 @@ $('openSettings').addEventListener('click', openSettings);
 $('closeSettings').addEventListener('click', closeSettings);
 $('settingsModal').addEventListener('click', (event) => { if (event.target === $('settingsModal')) closeSettings(); });
 $('testConnection').addEventListener('click', testConnection);
+$('restartBridge').addEventListener('click', restartBridge);
 $('saveConnection').addEventListener('click', saveAndConnect);
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !socket) connect(); });
