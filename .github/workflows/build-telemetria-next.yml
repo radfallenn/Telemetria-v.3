@@ -1,0 +1,146 @@
+name: Build Telemetria Next
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - agent/telemetria-next-zero
+    paths:
+      - 'telemetria-next/**'
+      - '.github/workflows/build-telemetria-next.yml'
+
+jobs:
+  validate-bridge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: telemetria-next/bridge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate JavaScript
+        run: npm run check
+
+      - name: Start isolated Bridge test
+        env:
+          HTTP_PORT: '18790'
+          UDP_RECEIVE_PORT: '43740'
+          PS5_HEARTBEAT_PORT: '43739'
+          PS5_IP: '127.0.0.1'
+          DATA_DIR: '/tmp/gt7-telemetria-next'
+        run: |
+          set -euo pipefail
+          node src/server.js >/tmp/gt7-next-bridge.log 2>&1 &
+          BRIDGE_PID=$!
+          trap 'kill "$BRIDGE_PID" 2>/dev/null || true; cat /tmp/gt7-next-bridge.log' EXIT
+          node <<'NODE'
+          const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          (async () => {
+            let health;
+            for (let attempt = 0; attempt < 30; attempt += 1) {
+              try {
+                const response = await fetch('http://127.0.0.1:18790/api/health');
+                health = await response.json();
+                if (response.ok && health.ok && health.udpBound) break;
+              } catch {}
+              await wait(150);
+            }
+            if (!health?.ok || !health?.udpBound || health.httpPort !== 18790) {
+              throw new Error(`Bridge inválida: ${JSON.stringify(health)}`);
+            }
+            const stateResponse = await fetch('http://127.0.0.1:18790/api/state');
+            const state = await stateResponse.json();
+            if (!stateResponse.ok || state.schemaVersion !== 1 || state.bridge?.name !== 'GT7 Bridge Next') {
+              throw new Error(`Contrato inválido: ${JSON.stringify(state)}`);
+            }
+            console.log('OK: Bridge Next iniciou com UDP, HTTP e contrato v1.');
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+  build-apk:
+    runs-on: ubuntu-latest
+    needs: validate-bridge
+    defaults:
+      run:
+        working-directory: telemetria-next/app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate web application
+        run: |
+          set -euo pipefail
+          test -s www/index.html
+          test -s www/styles.css
+          test -s www/app.js
+          node --check www/app.js
+          grep -q 'GT7 COCKPIT' www/index.html
+          grep -q 'http://192.168.1.70:8790' www/app.js
+          ! grep -q 'bridge-v408.js' www/index.html
+          ! grep -q 'patch-v4' www/index.html
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Sync Android project
+        run: npx cap sync android
+
+      - name: Allow local HTTP network
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text(encoding='utf-8')
+          if 'android.permission.INTERNET' not in text:
+              text = text.replace('<manifest ', '<manifest ')
+              text = text.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
+          if 'android:usesCleartextTraffic=' not in text:
+              text = text.replace('<application', '<application android:usesCleartextTraffic="true"', 1)
+          manifest.write_text(text, encoding='utf-8')
+          PY
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.1-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GT7-Telemetria-Next-v0.1
+          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.1-debug.apk
