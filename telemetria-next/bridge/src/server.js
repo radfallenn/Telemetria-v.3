@@ -4,10 +4,9 @@ const dgram = require('node:dgram');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
-const { WebSocketServer, WebSocket } = require('ws');
 const { decodeEncryptedPacket } = require('./protocol');
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const HTTP_PORT = Number(process.env.HTTP_PORT || 8790);
 const UDP_RECEIVE_PORT = Number(process.env.UDP_RECEIVE_PORT || 33740);
 const PS5_HEARTBEAT_PORT = Number(process.env.PS5_HEARTBEAT_PORT || 33739);
@@ -53,7 +52,6 @@ let rawPacketRate = 0;
 let decodeErrors = 0;
 let maxSpeedKmh = 0;
 let telemetry = null;
-let lastBroadcastAt = 0;
 
 const isUdpBound = () => Boolean(udpSocket);
 const isTelemetryReceiving = () => Date.now() - lastPacketAt < 2500;
@@ -61,8 +59,18 @@ const isTelemetryReceiving = () => Date.now() - lastPacketAt < 2500;
 const state = () => ({
   ok: true,
   schemaVersion: 1,
-  bridge: { name: 'GT7 Bridge Next', version: VERSION, uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000) },
-  config: { ps5Ip: config.ps5Ip, udpReceivePort: UDP_RECEIVE_PORT, ps5HeartbeatPort: PS5_HEARTBEAT_PORT, httpPort: HTTP_PORT },
+  transport: 'http-polling',
+  bridge: {
+    name: 'GT7 Bridge Next',
+    version: VERSION,
+    uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000)
+  },
+  config: {
+    ps5Ip: config.ps5Ip,
+    udpReceivePort: UDP_RECEIVE_PORT,
+    ps5HeartbeatPort: PS5_HEARTBEAT_PORT,
+    httpPort: HTTP_PORT
+  },
   udpBound: isUdpBound(),
   telemetryReceiving: isTelemetryReceiving(),
   packetRate,
@@ -90,7 +98,10 @@ function corsHeaders() {
 }
 
 function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' });
+  response.writeHead(statusCode, {
+    ...corsHeaders(),
+    'Content-Type': 'application/json; charset=utf-8'
+  });
   response.end(JSON.stringify(payload));
 }
 
@@ -102,21 +113,14 @@ function readJson(request) {
       if (body.length > 16_384) reject(new Error('Corpo da requisição excede o limite.'));
     });
     request.on('end', () => {
-      try { resolve(body ? JSON.parse(body) : {}); }
-      catch { reject(new Error('JSON inválido.')); }
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch {
+        reject(new Error('JSON inválido.'));
+      }
     });
     request.on('error', reject);
   });
-}
-
-function broadcast(force = false) {
-  const now = Date.now();
-  if (!force && now - lastBroadcastAt < 50) return;
-  lastBroadcastAt = now;
-  const message = JSON.stringify(state());
-  for (const client of webSocketServer.clients) {
-    if (client.readyState === WebSocket.OPEN) client.send(message);
-  }
 }
 
 function stopHeartbeat() {
@@ -166,7 +170,6 @@ async function startUdp() {
     console.error('[udp]', error.message);
     if (udpSocket === socket) udpSocket = null;
     stopHeartbeat();
-    broadcast(true);
   });
 
   socket.on('message', (packet) => {
@@ -181,7 +184,6 @@ async function startUdp() {
     lastPacketAt = Date.now();
     maxSpeedKmh = Math.max(maxSpeedKmh, decoded.speedKmh || 0);
     telemetry = { ...decoded, maxSpeedKmh };
-    broadcast(false);
   });
 
   await new Promise((resolve, reject) => {
@@ -202,7 +204,6 @@ async function startUdp() {
   console.log(`[udp] ouvindo 0.0.0.0:${UDP_RECEIVE_PORT}; PS5 ${config.ps5Ip}:${PS5_HEARTBEAT_PORT}`);
   sendHeartbeat();
   heartbeatTimer = setInterval(sendHeartbeat, 1000);
-  broadcast(true);
 }
 
 const server = http.createServer(async (request, response) => {
@@ -219,7 +220,8 @@ const server = http.createServer(async (request, response) => {
       ok: true,
       name: 'GT7 Bridge Next',
       version: VERSION,
-      endpoints: ['/api/health', '/api/state', '/api/config', '/api/restart', '/ws']
+      transport: 'http-polling',
+      endpoints: ['/api/health', '/api/state', '/api/config', '/api/restart']
     });
     return;
   }
@@ -230,6 +232,7 @@ const server = http.createServer(async (request, response) => {
       ok: true,
       name: current.bridge.name,
       version: current.bridge.version,
+      transport: current.transport,
       httpPort: HTTP_PORT,
       udpBound: current.udpBound,
       telemetryReceiving: current.telemetryReceiving,
@@ -262,7 +265,6 @@ const server = http.createServer(async (request, response) => {
       config = { ps5Ip: String(body.ps5Ip).trim() };
       saveConfig(config);
       sendHeartbeat();
-      broadcast(true);
       sendJson(response, 200, { ok: true, config: state().config });
     } catch (error) {
       sendJson(response, 400, { ok: false, error: error.message });
@@ -284,22 +286,6 @@ const server = http.createServer(async (request, response) => {
   sendJson(response, 404, { ok: false, error: 'Rota não encontrada.' });
 });
 
-const webSocketServer = new WebSocketServer({ noServer: true });
-webSocketServer.on('connection', (client) => {
-  client.send(JSON.stringify(state()));
-});
-
-server.on('upgrade', (request, socket, head) => {
-  const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
-  if (url.pathname !== '/ws') {
-    socket.destroy();
-    return;
-  }
-  webSocketServer.handleUpgrade(request, socket, head, (client) => {
-    webSocketServer.emit('connection', client, request);
-  });
-});
-
 server.on('error', (error) => {
   console.error('[http]', error.message);
 });
@@ -309,13 +295,11 @@ statusTimer = setInterval(() => {
   rawPacketRate = rawPacketCounter;
   packetCounter = 0;
   rawPacketCounter = 0;
-  broadcast(true);
 }, 1000);
 
 async function shutdown() {
   clearInterval(statusTimer);
   await closeUdp();
-  for (const client of webSocketServer.clients) client.close();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 2000).unref();
 }
@@ -327,6 +311,7 @@ startUdp().catch((error) => {
   lastUdpError = error.message;
   console.error('[udp:start]', error.message);
 });
+
 server.listen(HTTP_PORT, '0.0.0.0', () => {
   console.log(`[http] GT7 Bridge Next v${VERSION} em http://0.0.0.0:${HTTP_PORT}`);
 });
