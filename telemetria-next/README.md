@@ -24,14 +24,38 @@ Raspberry Pi - Bridge Next
 APK Android - Telemetria Next
   - somente a tela principal do cockpit
   - conexão WebSocket com fallback HTTP
-  - configuração em janela sobreposta
+  - configuração e diagnóstico em janela sobreposta
 ```
+
+O APK sozinho não abre sockets UDP do GT7. A Bridge Next precisa estar instalada e ativa no Raspberry Pi. O GitHub Actions gera dois artefatos separados e ambos fazem parte da instalação:
+
+- `GT7-Telemetria-Next-v0.2`: APK Android.
+- `GT7-Bridge-Next-v0.2-CasaOS`: Bridge pronta para CasaOS, Docker e Portainer.
+
+## Instalação no CasaOS ou Portainer
+
+1. Baixe e extraia o artefato `GT7-Bridge-Next-v0.2-CasaOS` no Raspberry.
+2. Entre na pasta extraída.
+3. Execute `bash install-casaos.sh`.
+4. Confirme no navegador: `http://IP_DO_RASPBERRY:8790/api/health`.
+5. No APK, configure a mesma URL e o IP real do PS5.
+
+O container usa `network_mode: host`, necessário para o heartbeat e a recepção UDP do GT7 funcionarem corretamente na rede local.
+
+## Diagnóstico da v0.2
+
+O APK separa três estados:
+
+- `OFF`: o APK não alcança a Bridge pela porta 8790.
+- `BRIDGE`: a Bridge está conectada, mas o GT7 ainda não envia pacotes.
+- `Recebendo GT7`: os pacotes estão chegando e sendo decodificados.
+
+A janela de configurações testa HTTP, porta UDP, pacotes brutos, pacotes decodificados e o IP do PS5. Também permite reiniciar somente a recepção UDP.
 
 ## Diretórios
 
 - `app/`: APK Android novo, usando Capacitor somente como embalagem da tela principal.
-- `bridge/`: serviço independente para Raspberry Pi.
-- `docs/`: decisões e contratos de dados do novo sistema.
+- `bridge/`: serviço independente para Raspberry Pi, com instalação systemd e Docker/CasaOS.
 
 ## Portas padrão do projeto novo
 
