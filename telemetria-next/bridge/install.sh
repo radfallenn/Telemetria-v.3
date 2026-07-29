@@ -11,8 +11,8 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-  echo "Node.js 20 ou superior e npm são obrigatórios."
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js 20 ou superior é obrigatório."
   exit 1
 fi
 
@@ -24,12 +24,8 @@ fi
 
 install -d -m 0755 "${APP_DIR}"
 install -d -m 0755 "${APP_DIR}/data"
-cp -R "${SOURCE_DIR}/package.json" "${APP_DIR}/"
 rm -rf "${APP_DIR}/src"
 cp -R "${SOURCE_DIR}/src" "${APP_DIR}/src"
-
-cd "${APP_DIR}"
-npm install --omit=dev --no-audit --no-fund
 chown -R "${RUN_USER}:${RUN_USER}" "${APP_DIR}"
 
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<SERVICE
@@ -62,5 +58,5 @@ systemctl enable --now "${SERVICE_NAME}.service"
 systemctl --no-pager --full status "${SERVICE_NAME}.service" || true
 
 echo
-echo "Bridge Next instalada em ${APP_DIR}."
+echo "Bridge Next v0.3 instalada em ${APP_DIR}, sem npm e sem dependências externas."
 echo "Abra no navegador: http://IP_DO_RASPBERRY:8790/api/health"
