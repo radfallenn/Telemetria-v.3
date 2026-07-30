@@ -1,10 +1,10 @@
 'use strict';
 
 (function () {
-  const STORAGE_KEY = 'gt7_v5_completed_laps_v1';
+  const STORAGE_KEY = 'gt7_v5_valid_laps_v2';
   const NETWORK_KEY = 'gt7_telemetria_next_network_v1';
-  const MIN_LAP_MS = 10_000;
-  const MAX_LAP_MS = 3_600_000;
+  const MIN_VALID_LAP_MS = 30_000;
+  const MAX_VALID_LAP_MS = 900_000;
   let painting = false;
 
   function readNetworkIdentity() {
@@ -16,40 +16,41 @@
     }
   }
 
+  function validLap(value) {
+    const milliseconds = Number(value);
+    return Number.isFinite(milliseconds) && milliseconds >= MIN_VALID_LAP_MS && milliseconds <= MAX_VALID_LAP_MS;
+  }
+
+  function lapMilliseconds(value) {
+    if (value && typeof value === 'object') {
+      if (value.valid === false || value.isValid === false || value.invalid === true || value.isInvalid === true) return null;
+      value = value.ms ?? value.timeMs ?? value.lapTimeMs ?? value.durationMs ?? value.lastLapMs ?? value.time;
+    }
+    return validLap(value) ? Math.round(Number(value)) : null;
+  }
+
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       return {
         identity: String(saved.identity || ''),
-        lapTimes: Array.isArray(saved.lapTimes) ? saved.lapTimes.filter(validLap) : [],
+        validLapTimes: Array.isArray(saved.validLapTimes) ? saved.validLapTimes.map(lapMilliseconds).filter(validLap) : [],
         lastToken: String(saved.lastToken || ''),
         lastLapNumber: Math.max(0, Number(saved.lastLapNumber) || 0)
       };
     } catch {
-      return { identity: '', lapTimes: [], lastToken: '', lastLapNumber: 0 };
+      return { identity: '', validLapTimes: [], lastToken: '', lastLapNumber: 0 };
     }
   }
 
   let session = loadState();
-
-  function validLap(value) {
-    const milliseconds = Number(value);
-    return Number.isFinite(milliseconds) && milliseconds >= MIN_LAP_MS && milliseconds <= MAX_LAP_MS;
-  }
-
-  function lapMilliseconds(value) {
-    if (value && typeof value === 'object') {
-      value = value.ms ?? value.timeMs ?? value.lapTimeMs ?? value.durationMs ?? value.lastLapMs;
-    }
-    return validLap(value) ? Math.round(Number(value)) : null;
-  }
 
   function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }
 
   function reset(identity = readNetworkIdentity()) {
-    session = { identity, lapTimes: [], lastToken: '', lastLapNumber: 0 };
+    session = { identity, validLapTimes: [], lastToken: '', lastLapNumber: 0 };
     saveState();
     paint();
   }
@@ -73,13 +74,17 @@
     return { root, telemetry };
   }
 
-  function explicitLapTimes(root, telemetry) {
+  function explicitValidLapTimes(root, telemetry) {
     const sources = [
+      telemetry.validLapTimes,
+      root.validLapTimes,
       telemetry.lapTimes,
       telemetry.completedLapTimes,
       root.lapTimes,
       root.completedLapTimes,
+      root.session?.validLaps,
       root.session?.laps,
+      root.activeSession?.validLaps,
       root.activeSession?.laps
     ];
     const source = sources.find((list) => Array.isArray(list) && list.length);
@@ -93,10 +98,11 @@
     const { root, telemetry } = payloadData(payload);
     const lapNumber = Math.max(0, Number(telemetry.lapNumber ?? root.lapNumber ?? 0) || 0);
     const lastLapMs = lapMilliseconds(telemetry.lastLapMs ?? root.lastLapMs);
-    const complete = explicitLapTimes(root, telemetry);
+    const lastLapDeclaredValid = (telemetry.lastLapValid ?? root.lastLapValid) !== false;
+    const complete = explicitValidLapTimes(root, telemetry);
 
     if (complete.length) {
-      session.lapTimes = complete;
+      session.validLapTimes = complete;
       session.lastToken = `${complete.length}:${complete.at(-1)}`;
     } else {
       const sessionRestarted =
@@ -104,14 +110,14 @@
         (lapNumber > 0 && session.lastLapNumber > 0 && lapNumber < session.lastLapNumber);
 
       if (sessionRestarted) {
-        session.lapTimes = [];
+        session.validLapTimes = [];
         session.lastToken = '';
       }
 
-      if (lastLapMs && lapNumber > 1) {
+      if (lastLapDeclaredValid && lastLapMs && lapNumber > 1) {
         const token = `${lapNumber - 1}:${lastLapMs}`;
         if (token !== session.lastToken) {
-          session.lapTimes.push(lastLapMs);
+          session.validLapTimes.push(lastLapMs);
           session.lastToken = token;
         }
       }
@@ -125,7 +131,7 @@
   function paint() {
     if (painting) return;
     painting = true;
-    const totalMs = session.lapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0);
+    const totalMs = session.validLapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0);
     const formatted = formatTotal(totalMs);
 
     for (const id of ['totalTime', 'totalTimePage']) {
@@ -134,21 +140,21 @@
     }
 
     const laps = document.getElementById('validLaps');
-    if (laps && laps.textContent !== String(session.lapTimes.length)) {
-      laps.textContent = String(session.lapTimes.length);
+    if (laps && laps.textContent !== String(session.validLapTimes.length)) {
+      laps.textContent = String(session.validLapTimes.length);
     }
     painting = false;
   }
 
   function install() {
-    if (typeof window.render === 'function' && !window.render.__v5LapTotal) {
+    if (typeof window.render === 'function' && !window.render.__v5ValidLapTotal) {
       const previous = window.render;
       const wrapped = function (payload) {
         const result = previous.apply(this, arguments);
         update(payload);
         return result;
       };
-      wrapped.__v5LapTotal = true;
+      wrapped.__v5ValidLapTotal = true;
       window.render = wrapped;
     }
 
@@ -169,8 +175,8 @@
 
   window.gt7V5LapTotal = {
     reset,
-    get lapTimes() { return [...session.lapTimes]; },
-    get totalMs() { return session.lapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0); }
+    get validLapTimes() { return [...session.validLapTimes]; },
+    get totalMs() { return session.validLapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0); }
   };
 
   if (document.readyState === 'loading') {
