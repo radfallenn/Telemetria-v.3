@@ -1,0 +1,173 @@
+/* V5.4 — interface mais compacta, fontes menores e controles discretos */
+
+:root {
+  --nav-height: 78px;
+}
+
+.app-shell {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.bridge-pill {
+  gap: 6px;
+  padding: 6px 9px;
+}
+
+.bridge-pill strong { font-size: 10px; }
+.bridge-pill small { font-size: 8px; }
+.status-dot { width: 8px; height: 8px; }
+
+/* Velocidade principal um pouco menor para ganhar respiro. */
+.speed-value {
+  font-size: clamp(64px, 18vw, 112px) !important;
+  line-height: .94 !important;
+}
+
+.speed-unit {
+  margin-top: 3% !important;
+  font-size: clamp(13px, 3.6vw, 22px) !important;
+  letter-spacing: 2px !important;
+}
+
+.scale-number {
+  font-size: clamp(10px, 2.6vw, 16px) !important;
+  opacity: .78;
+}
+
+.gear-badge {
+  width: clamp(62px, 15.5vw, 94px) !important;
+  border-width: 2px !important;
+  font-size: clamp(31px, 8.5vw, 52px) !important;
+}
+
+/* Velocidade máxima da seção acima da velocidade atual. */
+.max-speed-inline {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  min-width: 120px;
+  color: #8ea1a5;
+  white-space: nowrap;
+  font-size: clamp(8px, 2vw, 12px);
+  font-weight: 800;
+  letter-spacing: .8px;
+}
+
+.max-speed-inline strong {
+  color: #d7e0e2;
+  font-size: clamp(13px, 3.2vw, 20px);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.max-speed-inline small {
+  color: #778a8e;
+  font-size: clamp(7px, 1.7vw, 10px);
+}
+
+.dashboard-grid,
+.secondary-grid {
+  gap: 9px !important;
+}
+
+.data-card {
+  min-height: 116px !important;
+  padding: 16px 17px !important;
+  border-radius: 28px !important;
+}
+
+.data-card.layout-enabled {
+  padding-right: 58px !important;
+}
+
+.card-title {
+  font-size: clamp(12px, 3vw, 17px) !important;
+  letter-spacing: 1px !important;
+}
+
+.data-card > strong,
+.card-row > strong {
+  margin-top: 21px !important;
+  font-size: clamp(27px, 6.5vw, 42px) !important;
+}
+
+.card-row > strong {
+  margin-top: 0 !important;
+}
+
+.data-card small { font-size: 9px !important; }
+
+.fuel-card { min-height: 135px !important; }
+.fuel-segments { gap: 6px !important; margin-top: 22px !important; }
+.fuel-segments i { height: 32px !important; border-radius: 8px !important; }
+
+.bar {
+  height: 11px !important;
+  margin-top: 24px !important;
+}
+
+.tyre-card { min-height: 132px !important; }
+.tyre-grid { margin-top: 18px !important; }
+.tyre-grid div { padding: 9px 3px !important; }
+.tyre-grid span { font-size: 9px !important; }
+.tyre-grid strong { font-size: clamp(17px, 4.2vw, 25px) !important; }
+
+.secondary-page h1 { font-size: 29px !important; }
+.secondary-page header span { font-size: 9px !important; }
+.dash-footer { font-size: 9px !important; }
+.bottom-nav button { font-size: clamp(10px, 2.7vw, 14px) !important; }
+
+/* Setas menores, mantendo a função de mover os cartões. */
+.card-layout-controls {
+  top: 10px !important;
+  right: 8px !important;
+  grid-template-columns: repeat(3, 16px) !important;
+  grid-template-rows: repeat(3, 16px) !important;
+  gap: 0 !important;
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.card-layout-controls button {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 5px !important;
+  font-size: 8px !important;
+  opacity: .7 !important;
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .data-card {
+    min-height: 108px !important;
+    padding: 14px 14px !important;
+  }
+
+  .data-card.layout-enabled {
+    padding-right: 52px !important;
+  }
+
+  .card-layout-controls {
+    right: 6px !important;
+    grid-template-columns: repeat(3, 15px) !important;
+    grid-template-rows: repeat(3, 15px) !important;
+    width: 45px !important;
+    height: 45px !important;
+  }
+
+  .card-layout-controls button {
+    width: 15px !important;
+    height: 15px !important;
+    font-size: 7px !important;
+  }
+}
