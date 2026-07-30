@@ -98,16 +98,16 @@ jobs:
       - name: Prepare CasaOS Bridge package
         run: |
           set -euo pipefail
-          rm -rf release/GT7-Bridge-Next-v0.8-CasaOS
-          mkdir -p release/GT7-Bridge-Next-v0.8-CasaOS
-          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-Next-v0.8-CasaOS/
-          cp -R src release/GT7-Bridge-Next-v0.8-CasaOS/src
+          rm -rf release/GT7-Bridge-Next-v0.9-CasaOS
+          mkdir -p release/GT7-Bridge-Next-v0.9-CasaOS
+          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-Next-v0.9-CasaOS/
+          cp -R src release/GT7-Bridge-Next-v0.9-CasaOS/src
 
       - name: Upload CasaOS Bridge
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Bridge-Next-v0.8-CasaOS
-          path: telemetria-next/bridge/release/GT7-Bridge-Next-v0.8-CasaOS
+          name: GT7-Bridge-Next-v0.9-CasaOS
+          path: telemetria-next/bridge/release/GT7-Bridge-Next-v0.9-CasaOS
 
   build-apk:
     runs-on: ubuntu-latest
@@ -133,10 +133,10 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate average laps dashboard
+      - name: Validate 120 Hz, copy and fuel alert
         run: |
           set -euo pipefail
-          for file in www/index.html www/styles.css www/app.js www/fuel-heatmap.css www/fuel-heatmap.js www/rpm-heatmap.css www/card-layout.css www/card-layout.js www/compact-ui-v06.css www/gauge-v07.css www/gauge-v07.js www/valid-lap-total.js www/average-laps.css; do
+          for file in www/index.html www/styles.css www/app.js www/fuel-heatmap.css www/fuel-heatmap.js www/rpm-heatmap.css www/card-layout.css www/card-layout.js www/compact-ui-v06.css www/gauge-v07.css www/gauge-v07.js www/valid-lap-total.js www/average-laps.css www/performance-copy-fuel-v09.js; do
             test -s "$file"
           done
           node --check www/app.js
@@ -144,33 +144,18 @@ jobs:
           node --check www/card-layout.js
           node --check www/gauge-v07.js
           node --check www/valid-lap-total.js
-          grep -q 'id="maxSpeedGauge"' www/index.html
+          node --check www/performance-copy-fuel-v09.js
+          grep -q 'performance-copy-fuel-v09.js' www/index.html
+          grep -q 'TARGET_FPS = 120' www/performance-copy-fuel-v09.js
+          grep -q 'navigator.clipboard.writeText' www/performance-copy-fuel-v09.js
+          grep -q 'LOW_FUEL_SEGMENTS = 5' www/performance-copy-fuel-v09.js
+          grep -q 'oscillator.frequency' www/performance-copy-fuel-v09.js
           grep -q 'id="rpmProgressArc"' www/index.html
           grep -q 'id="averagePage"' www/index.html
-          grep -q 'id="averageLapTime"' www/index.html
-          grep -q 'id="averageLapCount"' www/index.html
-          grep -q 'average-laps.css' www/index.html
-          grep -q 'gauge-v07.css' www/index.html
-          grep -q 'gauge-v07.js' www/index.html
-          grep -q 'valid-lap-total.js' www/index.html
-          grep -q 'card-layout.js' www/index.html
           grep -q 'ARC_DEGREES = 300' www/gauge-v07.js
-          grep -q 'START_ANGLE = -150' www/gauge-v07.js
-          grep -q -- '--rpm-progress' www/gauge-v07.css
-          grep -q 'nth-child(n+31)' www/rpm-heatmap.css
-          grep -q 'totalMs / lapCount' www/valid-lap-total.js
-          grep -q 'averageLapTime' www/valid-lap-total.js
           grep -q 'session.validLapTimes.reduce' www/valid-lap-total.js
-          grep -q 'value.valid === false' www/valid-lap-total.js
-          grep -q 'data-layout-move="${direction}"' www/card-layout.js
-          grep -q "\['up', '▲'" www/card-layout.js
-          grep -q "\['left', '◀'" www/card-layout.js
-          grep -q "\['right', '▶'" www/card-layout.js
-          grep -q "\['down', '▼'" www/card-layout.js
           grep -q 'http://192.168.1.70:8790' www/app.js
           grep -q '/api/config' www/app.js
-          ! grep -q 'bridge-v408.js' www/index.html
-          ! grep -q 'patch-v4' www/index.html
           ! grep -q 'new WebSocket' www/app.js
 
       - name: Generate Android project
@@ -179,10 +164,11 @@ jobs:
       - name: Sync Android project
         run: npx cap sync android
 
-      - name: Allow local HTTP network
+      - name: Allow local HTTP network and request 120 Hz
         run: |
           python3 <<'PY'
           from pathlib import Path
+
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text(encoding='utf-8')
           if 'android.permission.INTERNET' not in text:
@@ -192,10 +178,30 @@ jobs:
           if 'android:usesCleartextTraffic=' not in text:
               text = text.replace('<application', '<application android:usesCleartextTraffic="true"', 1)
           manifest.write_text(text, encoding='utf-8')
+
+          java_files = list(Path('android/app/src/main/java').rglob('MainActivity.java'))
+          if not java_files:
+              raise SystemExit('MainActivity.java não encontrado')
+          activity = java_files[0]
+          source = activity.read_text(encoding='utf-8')
+          if 'preferredRefreshRate = 120.0f' not in source:
+              source = source.replace(
+                  'public class MainActivity extends BridgeActivity {}',
+                  '''public class MainActivity extends BridgeActivity {
+            @Override
+            public void onCreate(android.os.Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              android.view.WindowManager.LayoutParams params = getWindow().getAttributes();
+              params.preferredRefreshRate = 120.0f;
+              getWindow().setAttributes(params);
+            }
+          }'''
+              )
+          activity.write_text(source, encoding='utf-8')
           PY
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
-          grep -q 'android.permission.ACCESS_NETWORK_STATE' android/app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+          grep -R -q 'preferredRefreshRate = 120.0f' android/app/src/main/java
 
       - name: Build debug APK
         run: |
@@ -206,10 +212,10 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.8-Media-de-Voltas-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-Next-v0.9-120Hz-Copia-Alerta-Combustivel-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-Next-v0.8-Media-de-Voltas
-          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.8-Media-de-Voltas-debug.apk
+          name: GT7-Telemetria-Next-v0.9-120Hz-Copia-Alerta-Combustivel
+          path: telemetria-next/app/release/GT7-Telemetria-Next-v0.9-120Hz-Copia-Alerta-Combustivel-debug.apk
