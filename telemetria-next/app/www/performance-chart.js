@@ -3,6 +3,7 @@
 (function () {
   const MAX_POINTS = 16;
   const LAPS_KEY = 'gt7_next_all_laps_v1';
+  const CURVE_TENSION = 0.72;
   let mode = 'trend';
   let lastSignature = '';
 
@@ -54,12 +55,25 @@
     })[character]);
   }
 
+  function smoothSegment(points, index) {
+    const p0 = points[Math.max(0, index - 1)];
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    const p3 = points[Math.min(points.length - 1, index + 2)];
+    const scale = CURVE_TENSION / 6;
+    const c1x = p1.x + (p2.x - p0.x) * scale;
+    const c1y = p1.y + (p2.y - p0.y) * scale;
+    const c2x = p2.x - (p3.x - p1.x) * scale;
+    const c2y = p2.y - (p3.y - p1.y) * scale;
+    return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+
   function lineChart(laps) {
     const width = 620;
     const height = 128;
     const left = 18;
     const right = 12;
-    const top = 12;
+    const top = 18;
     const bottom = 25;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
@@ -72,7 +86,7 @@
     let min = Math.min(...values);
     let max = Math.max(...values);
     const naturalRange = max - min;
-    const padding = Math.max(mode === 'delta' ? 80 : 120, naturalRange * 0.18);
+    const padding = Math.max(mode === 'delta' ? 80 : 120, naturalRange * 0.22);
     min -= padding;
     max += padding;
     if (max === min) max = min + 1;
@@ -91,10 +105,9 @@
       : '';
 
     const segments = points.slice(1).map((point, index) => {
-      const previous = points[index];
       const gainMs = gain(laps[index + 1].timeMs, laps[index].timeMs);
       const state = classify(gainMs);
-      return `<line class="performance-line-segment ${state}" x1="${previous.x}" y1="${previous.y}" x2="${point.x}" y2="${point.y}" />`;
+      return `<path class="performance-line-segment ${state}" d="${smoothSegment(points, index)}" />`;
     }).join('');
 
     const dots = points.map((point, index) => {
@@ -104,13 +117,18 @@
       const label = mode === 'trend'
         ? `Volta ${point.lap.lap}: ${formatLap(point.lap.timeMs)}`
         : `Volta ${point.lap.lap}: ${formatDifference(point.value)} da melhor`;
+      const valueLabel = mode === 'trend'
+        ? formatLap(point.lap.timeMs)
+        : `${(point.value / 1000).toFixed(3)}s`;
+      const labelY = Math.max(10, point.y - 8);
       return `<g class="performance-point ${state}">` +
         `<circle cx="${point.x}" cy="${point.y}" r="4.2"><title>${esc(label)}</title></circle>` +
-        `<text x="${point.x}" y="${height - 8}" text-anchor="middle">${esc(point.lap.lap)}</text>` +
+        `<text class="performance-value-label" x="${point.x}" y="${labelY}" text-anchor="middle">${esc(valueLabel)}</text>` +
+        `<text class="performance-lap-label" x="${point.x}" y="${height - 8}" text-anchor="middle">${esc(point.lap.lap)}</text>` +
       `</g>`;
     }).join('');
 
-    return `<svg class="performance-line-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Gráfico de linha dos tempos das voltas">${grid}${baseline}${segments}${dots}</svg>`;
+    return `<svg class="performance-line-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Gráfico suavizado dos tempos das voltas">${grid}${baseline}${segments}${dots}</svg>`;
   }
 
   function render() {
