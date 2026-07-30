@@ -1,0 +1,76 @@
+/* v0.7 — conta-giros quase circular e arco interno azul de RPM */
+
+.rpm-gauge {
+  width: 88% !important;
+}
+
+.rpm-ring {
+  inset: 2.5% !important;
+}
+
+.rpm-tick::before {
+  height: 18px !important;
+}
+
+.rpm-tick.major::before {
+  height: 27px !important;
+}
+
+.rpm-progress-arc {
+  --rpm-progress: 0deg;
+  position: absolute;
+  inset: 15.5%;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    conic-gradient(
+      from 210deg,
+      #1768ff 0deg,
+      #1768ff var(--rpm-progress),
+      rgba(16, 46, 63, .18) var(--rpm-progress),
+      rgba(16, 46, 63, .18) 300deg,
+      transparent 300deg 360deg
+    );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  filter: drop-shadow(0 0 7px rgba(23, 104, 255, .85));
+  opacity: .98;
+}
+
+.rpm-progress-arc::after {
+  content: "RPM";
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  transform: translateX(-50%);
+  color: #5c8fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+/* Escala distribuída ao redor de quase todo o círculo. */
+.n0 { left: 8% !important; top: 53% !important; bottom: auto !important; }
+.n2 { left: 13% !important; top: 27% !important; }
+.n4 { left: 30% !important; top: 7% !important; }
+.n6 { right: 30% !important; top: 7% !important; }
+.n8 { right: 13% !important; top: 27% !important; }
+.n10 { right: 8% !important; top: 53% !important; bottom: auto !important; }
+
+.gauge-center {
+  inset: 23% !important;
+  z-index: 3;
+}
+
+.max-speed-inline {
+  top: 11% !important;
+}
+
+@media (max-width: 420px) {
+  .rpm-progress-arc {
+    inset: 16%;
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+  }
+}
