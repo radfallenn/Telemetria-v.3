@@ -50,7 +50,7 @@
     paint();
   }
 
-  function formatTotal(value) {
+  function formatTime(value) {
     let milliseconds = Math.max(0, Math.round(Number(value) || 0));
     if (!milliseconds) return '--';
     const hours = Math.floor(milliseconds / 3_600_000);
@@ -112,17 +112,26 @@
     paint();
   }
 
+  function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+
   function paint() {
     if (painting) return;
     painting = true;
+
+    const lapCount = session.validLapTimes.length;
     const totalMs = session.validLapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0);
-    const formatted = formatTotal(totalMs);
-    for (const id of ['totalTime', 'totalTimePage']) {
-      const element = document.getElementById(id);
-      if (element && element.textContent !== formatted) element.textContent = formatted;
-    }
-    const laps = document.getElementById('validLaps');
-    if (laps && laps.textContent !== String(session.validLapTimes.length)) laps.textContent = String(session.validLapTimes.length);
+    const averageMs = lapCount > 0 ? Math.round(totalMs / lapCount) : 0;
+    const formattedTotal = formatTime(totalMs);
+    const formattedAverage = averageMs ? formatTime(averageMs) : '--:--.---';
+
+    for (const id of ['totalTime', 'totalTimePage', 'averageTotalTime']) setText(id, formattedTotal);
+    setText('validLaps', String(lapCount));
+    setText('averageLapCount', String(lapCount));
+    setText('averageLapTime', formattedAverage);
+
     painting = false;
   }
 
@@ -137,10 +146,12 @@
       wrapped.__validLapTotal = true;
       window.render = wrapped;
     }
-    for (const id of ['totalTime', 'totalTimePage']) {
+
+    for (const id of ['totalTime', 'totalTimePage', 'averageTotalTime', 'averageLapTime', 'averageLapCount']) {
       const element = document.getElementById(id);
       if (element) new MutationObserver(paint).observe(element, { childList: true, subtree: true, characterData: true });
     }
+
     paint();
     setInterval(paint, 250);
   }
@@ -148,7 +159,12 @@
   window.gt7ValidLapTotal = {
     reset,
     get validLapTimes() { return [...session.validLapTimes]; },
-    get totalMs() { return session.validLapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0); }
+    get totalMs() { return session.validLapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0); },
+    get averageMs() {
+      return session.validLapTimes.length
+        ? Math.round(session.validLapTimes.reduce((sum, milliseconds) => sum + milliseconds, 0) / session.validLapTimes.length)
+        : 0;
+    }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
