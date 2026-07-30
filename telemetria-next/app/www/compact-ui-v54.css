@@ -18,8 +18,54 @@
 .bridge-pill small { font-size: 8px; }
 .status-dot { width: 8px; height: 8px; }
 
+/* Conta-giros em semicírculo sobre a velocidade. */
+.rpm-ring {
+  inset: 3.5% !important;
+}
+
+.rpm-tick::before {
+  height: 18px !important;
+}
+
+.rpm-tick.major::before {
+  height: 25px !important;
+}
+
+.n0 {
+  left: 4% !important;
+  top: 53% !important;
+  bottom: auto !important;
+}
+
+.n2 {
+  left: 8% !important;
+  top: 31% !important;
+}
+
+.n4 {
+  left: 27% !important;
+  top: 7% !important;
+}
+
+.n6 {
+  right: 27% !important;
+  top: 7% !important;
+}
+
+.n8 {
+  right: 8% !important;
+  top: 31% !important;
+}
+
+.n10 {
+  right: 4% !important;
+  top: 53% !important;
+  bottom: auto !important;
+}
+
 /* Velocidade principal um pouco menor para ganhar respiro. */
 .speed-value {
+  margin-top: 5% !important;
   font-size: clamp(64px, 18vw, 112px) !important;
   line-height: .94 !important;
 }
