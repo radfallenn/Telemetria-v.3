@@ -1,0 +1,54 @@
+{
+  "name": "GT7 Telemetria V5.3",
+  "status": "known-good",
+  "confirmedAt": "2026-07-30T06:57:00-03:00",
+  "repository": "radfallenn/Telemetria-v.3",
+  "developmentBranch": "telemetria-v5",
+  "exactRestoreBranch": "restore/telemetria-v5-perfect-2026-07-30",
+  "exactCommit": "e96583aa1be1b31300f95cfd2c9249571c00e8b0",
+  "artifacts": {
+    "apk": "GT7-Telemetria-V5.3-Layout-Movel-Heatmap",
+    "bridge": "GT7-Bridge-V5.3-CasaOS"
+  },
+  "network": {
+    "defaultBridgeUrl": "http://192.168.1.70:8790",
+    "defaultPs5Ip": "192.168.1.81",
+    "httpPort": 8790,
+    "udpReceivePort": 33740,
+    "ps5HeartbeatPort": 33739,
+    "heartbeatPayload": "A"
+  },
+  "android": {
+    "appId": "com.studiorad.gt7telemetrynext",
+    "appName": "GT7 Telemetria Next",
+    "cleartextLocalHttp": true
+  },
+  "storageKeys": [
+    "gt7_telemetria_next_network_v1",
+    "gt7_v5_valid_laps_v2",
+    "gt7_v5_card_layout_v1"
+  ],
+  "requiredRules": {
+    "totalTime": "sum(valid completed lap times)",
+    "invalidLapsExcluded": true,
+    "currentLapExcluded": true,
+    "duplicateLapTimesExcluded": true,
+    "movableCardsAllPages": true,
+    "rpmHeatmap": true
+  },
+  "criticalFiles": [
+    "telemetria-next/app/www/index.html",
+    "telemetria-next/app/www/styles.css",
+    "telemetria-next/app/www/app.js",
+    "telemetria-next/app/www/v5-lap-total.js",
+    "telemetria-next/app/www/rpm-heatmap.css",
+    "telemetria-next/app/www/card-layout.css",
+    "telemetria-next/app/www/card-layout.js",
+    "telemetria-next/app/www/fuel-heatmap.css",
+    "telemetria-next/app/www/fuel-heatmap.js",
+    "telemetria-next/bridge/src/server.js",
+    "telemetria-next/bridge/src/protocol.js",
+    ".github/workflows/build-v5-next.yml"
+  ],
+  "verificationCommand": "node scripts/verify-v5-restore-point.js"
+}
