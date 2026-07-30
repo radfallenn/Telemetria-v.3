@@ -30,29 +30,38 @@ Abra **SET** e informe:
 
 Os dois campos são editáveis e ficam salvos no aparelho.
 
-## Tempo Total
+## Regra oficial do Tempo Total
 
-O campo **Tempo Total** soma todas as voltas concluídas detectadas:
+O campo **Tempo Total** é exclusivamente a soma dos tempos das voltas válidas:
 
 ```text
-Tempo Total = Volta 1 + Volta 2 + Volta 3 + ...
+Tempo Total = soma dos tempos de todas as voltas válidas
 ```
+
+Uma volta entra no cálculo somente quando:
+
+- foi concluída;
+- possui tempo numérico positivo entre 30 segundos e 15 minutos;
+- não está marcada como inválida pela fonte de telemetria;
+- ainda não foi registrada, evitando duplicação do mesmo tempo.
 
 Não entram no cálculo:
 
+- volta inválida;
+- volta ainda em andamento;
 - tempo desde que o aplicativo abriu;
 - tempo parado;
-- volta ainda em andamento.
+- relógio da conexão com a Bridge.
 
-A lista parcial fica preservada no celular durante a sessão e é zerada quando uma nova sessão é detectada.
+A lista de voltas válidas fica preservada no celular durante a sessão e é zerada quando uma nova sessão é detectada.
 
 ## Instalação da Bridge no CasaOS
 
-1. Baixe o artefato `GT7-Bridge-V5.2-Next-CasaOS`.
+1. Baixe o artefato `GT7-Bridge-V5.2-CasaOS`.
 2. Extraia no Raspberry.
 3. Execute `bash install-casaos.sh`.
 4. Abra `http://IP_DO_RASPBERRY:8790/api/health`.
-5. Instale o APK `GT7-Telemetria-V5.2-Next-Funcional`.
+5. Instale o APK `GT7-Telemetria-V5.2-Tempo-Total-Voltas-Validas`.
 
 O container usa `network_mode: host`, necessário para o protocolo UDP do GT7.
 
@@ -60,8 +69,8 @@ O container usa `network_mode: host`, necessário para o protocolo UDP do GT7.
 
 O workflow da branch `telemetria-v5` gera:
 
-- `GT7-Telemetria-V5.2-Next-Funcional`;
-- `GT7-Bridge-V5.2-Next-CasaOS`.
+- `GT7-Telemetria-V5.2-Tempo-Total-Voltas-Validas`;
+- `GT7-Bridge-V5.2-CasaOS`.
 
 ## Identidade Android
 
