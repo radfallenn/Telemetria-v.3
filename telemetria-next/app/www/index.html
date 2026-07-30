@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="rpm-heatmap.css">
   <link rel="stylesheet" href="card-layout.css">
   <link rel="stylesheet" href="compact-ui-v06.css">
+  <link rel="stylesheet" href="gauge-v07.css">
 </head>
 <body>
   <main class="app-shell">
@@ -24,6 +25,7 @@
         <div class="outer-ring" id="outerRing"></div>
         <div class="rpm-gauge">
           <div class="rpm-ring" id="rpmRing"></div>
+          <div id="rpmProgressArc" class="rpm-progress-arc" role="progressbar" aria-label="RPM atual" aria-valuemin="0" aria-valuemax="10000" aria-valuenow="0"></div>
           <span class="scale-number n0">0</span>
           <span class="scale-number n2">2</span>
           <span class="scale-number n4">4</span>
@@ -124,7 +126,7 @@
   </div>
 
   <script src="app.js"></script>
-  <script src="gauge-v06.js"></script>
+  <script src="gauge-v07.js"></script>
   <script src="valid-lap-total.js"></script>
   <script src="fuel-heatmap.js"></script>
   <script src="card-layout.js"></script>
