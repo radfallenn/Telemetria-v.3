@@ -154,10 +154,11 @@ jobs:
           grep -q 'nth-child(n+31)' www/rpm-heatmap.css
           grep -q 'session.validLapTimes.reduce' www/valid-lap-total.js
           grep -q 'value.valid === false' www/valid-lap-total.js
-          grep -q 'data-layout-move="up"' www/card-layout.js
-          grep -q 'data-layout-move="left"' www/card-layout.js
-          grep -q 'data-layout-move="right"' www/card-layout.js
-          grep -q 'data-layout-move="down"' www/card-layout.js
+          grep -q 'data-layout-move="${direction}"' www/card-layout.js
+          grep -q "\['up', '▲'" www/card-layout.js
+          grep -q "\['left', '◀'" www/card-layout.js
+          grep -q "\['right', '▶'" www/card-layout.js
+          grep -q "\['down', '▼'" www/card-layout.js
           grep -q 'http://192.168.1.70:8790' www/app.js
           grep -q '/api/config' www/app.js
           ! grep -q 'bridge-v408.js' www/index.html
