@@ -4,6 +4,8 @@
   const LAPS_KEY = 'gt7_next_all_laps_v1';
   const SESSION_KEY = 'gt7_next_session_meta_v1';
   let state = loadLapState();
+  let lastVisibleLap = 0;
+  let lastValidCount = 0;
 
   function loadLapState() {
     try {
@@ -41,52 +43,69 @@
     return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
   }
 
-  function lapData(payload) {
-    const root = payload?.state || payload || {};
-    const telemetry = root.telemetry || payload?.telemetry || {};
-    const lapNumber = Math.max(0, Number(telemetry.lapNumber ?? root.lapNumber ?? 0) || 0);
-    const lastLapMs = Number(telemetry.lastLapMs ?? root.lastLapMs ?? 0);
-    const validity = telemetry.lastLapValid ?? root.lastLapValid;
-    return {
-      lapNumber,
-      lastLapMs,
-      valid: validity !== false
-    };
+  function parseLapTime(value) {
+    const match = String(value || '').trim().match(/^(\d+):(\d{2})[.,](\d{3})$/);
+    if (!match) return 0;
+    return Number(match[1]) * 60000 + Number(match[2]) * 1000 + Number(match[3]);
   }
 
-  function register(payload) {
+  function visibleLapNumber() {
+    const match = String(document.getElementById('lapNumber')?.textContent || '').match(/\d+/);
+    return match ? Math.max(0, Number(match[0]) || 0) : 0;
+  }
+
+  function visibleValidCount() {
+    return Math.max(0, Number(document.getElementById('validLaps')?.textContent) || 0);
+  }
+
+  function registerVisibleLap() {
     const identity = networkIdentity();
     if (state.identity !== identity) {
       state = { identity, laps: [], lastToken: '', lastLapNumber: 0 };
+      lastVisibleLap = 0;
+      lastValidCount = 0;
     }
 
-    const data = lapData(payload);
+    const lapNumber = visibleLapNumber();
+    const validCount = visibleValidCount();
+    const lastLapMs = parseLapTime(
+      document.getElementById('lastLapPage')?.textContent ||
+      document.getElementById('lastLap')?.textContent
+    );
+
     const restarted =
-      (state.lastLapNumber > 1 && data.lapNumber === 0) ||
-      (data.lapNumber > 0 && state.lastLapNumber > 0 && data.lapNumber < state.lastLapNumber);
+      (lastVisibleLap > 1 && lapNumber === 0) ||
+      (lapNumber > 0 && lastVisibleLap > 0 && lapNumber < lastVisibleLap);
 
     if (restarted) {
       state.laps = [];
       state.lastToken = '';
+      lastValidCount = 0;
     }
 
-    if (Number.isFinite(data.lastLapMs) && data.lastLapMs > 0 && data.lapNumber > 1) {
-      const completedLap = data.lapNumber - 1;
-      const token = `${completedLap}:${Math.round(data.lastLapMs)}`;
+    if (lapNumber > 1 && lastLapMs > 0) {
+      const completedLap = lapNumber - 1;
+      const token = `${completedLap}:${lastLapMs}`;
       if (token !== state.lastToken) {
-        state.laps.push({
+        const valid = validCount > lastValidCount;
+        const entry = {
           lap: completedLap,
-          timeMs: Math.round(data.lastLapMs),
-          valid: data.valid,
+          timeMs: lastLapMs,
+          valid,
           savedAt: new Date().toISOString()
-        });
+        };
+        state.laps.push(entry);
         state.lastToken = token;
+        saveLapState();
+        paintLaps();
+        window.dispatchEvent(new CustomEvent('gt7-lap-recorded', { detail: entry }));
       }
     }
 
-    state.lastLapNumber = data.lapNumber;
+    lastVisibleLap = lapNumber;
+    lastValidCount = validCount;
+    state.lastLapNumber = lapNumber;
     saveLapState();
-    paintLaps();
   }
 
   function paintLaps() {
@@ -110,11 +129,8 @@
   }
 
   function loadSessionMeta() {
-    try {
-      return JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || '{}'); }
+    catch { return {}; }
   }
 
   function installSessionMeta() {
@@ -129,38 +145,28 @@
     car.value = saved.car || '';
 
     save.addEventListener('click', () => {
-      const value = {
-        track: track.value.trim(),
-        car: car.value.trim(),
-        savedAt: new Date().toISOString()
-      };
+      const value = { track: track.value.trim(), car: car.value.trim(), savedAt: new Date().toISOString() };
       localStorage.setItem(SESSION_KEY, JSON.stringify(value));
       if (result) result.textContent = 'Pista e carro salvos neste dispositivo.';
     });
   }
 
   function install() {
-    if (typeof window.render === 'function' && !window.render.__allLapsHistory) {
-      const previous = window.render;
-      const wrapped = function (payload) {
-        const result = previous.apply(this, arguments);
-        register(payload);
-        return result;
-      };
-      wrapped.__allLapsHistory = true;
-      window.render = wrapped;
-    }
-
     installSessionMeta();
     paintLaps();
+    lastVisibleLap = visibleLapNumber();
+    lastValidCount = visibleValidCount();
+    setInterval(registerVisibleLap, 350);
   }
 
   window.gt7AllLaps = {
     get laps() { return [...state.laps]; },
+    get validLaps() { return state.laps.filter((lap) => lap.valid); },
     reset() {
       state = { identity: networkIdentity(), laps: [], lastToken: '', lastLapNumber: 0 };
       saveLapState();
       paintLaps();
+      window.dispatchEvent(new CustomEvent('gt7-laps-reset'));
     }
   };
 
