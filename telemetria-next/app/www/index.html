@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="card-layout.css">
   <link rel="stylesheet" href="compact-ui-v06.css">
   <link rel="stylesheet" href="gauge-v07.css">
+  <link rel="stylesheet" href="average-laps.css">
 </head>
 <body>
   <main class="app-shell">
@@ -89,6 +90,19 @@
       </div>
     </section>
 
+    <section id="averagePage" class="page secondary-page average-page">
+      <header><span>GT7 TELEMETRIA</span><h1>MÉDIA DE VOLTAS</h1></header>
+      <div class="secondary-grid">
+        <article class="data-card average-hero">
+          <span class="card-title">TEMPO MÉDIO</span>
+          <strong id="averageLapTime">--:--.---</strong>
+          <div class="average-formula">Soma dos tempos das voltas válidas ÷ quantidade de voltas válidas</div>
+        </article>
+        <article class="data-card"><span class="card-title">TEMPO TOTAL</span><strong id="averageTotalTime">--</strong></article>
+        <article class="data-card"><span class="card-title">VOLTAS USADAS</span><strong id="averageLapCount">0</strong></article>
+      </div>
+    </section>
+
     <section id="sessionPage" class="page secondary-page">
       <header><span>GT7 TELEMETRIA</span><h1>SEÇÃO</h1></header>
       <div class="secondary-grid">
@@ -108,6 +122,7 @@
   <nav class="bottom-nav" aria-label="Navegação principal">
     <button class="active" data-page="dashPage">DASH</button>
     <button data-page="lapsPage">VOLTAS</button>
+    <button data-page="averagePage">MÉDIA</button>
     <button data-page="sessionPage">SEÇÃO</button>
     <button data-page="telemetryPage">TELEMETRIA</button>
     <button id="navSettings">SET</button>
