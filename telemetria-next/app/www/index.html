@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="compact-ui-v06.css">
   <link rel="stylesheet" href="gauge-v07.css">
   <link rel="stylesheet" href="average-laps.css">
+  <link rel="stylesheet" href="lap-history-session.css">
 </head>
 <body>
   <main class="app-shell">
@@ -87,6 +88,10 @@
         <article class="data-card"><span class="card-title">MELHOR VOLTA</span><strong id="bestLapPage">--:--.---</strong></article>
         <article class="data-card"><span class="card-title">ÚLTIMA VOLTA</span><strong id="lastLapPage">--:--.---</strong></article>
         <article class="data-card"><span class="card-title">TOTAL DAS VOLTAS</span><strong id="totalTimePage">--</strong></article>
+        <article class="data-card lap-history-card">
+          <div class="card-row"><span class="card-title">TODAS AS VOLTAS</span><strong id="allLapsCount">0</strong></div>
+          <div id="allLapsList" class="lap-history-list"><div class="lap-history-empty">Nenhuma volta concluída registrada.</div></div>
+        </article>
       </div>
     </section>
 
@@ -110,6 +115,15 @@
         <article class="data-card"><span class="card-title">PACOTES GT7</span><strong id="packetRate">0/s</strong></article>
         <article class="data-card"><span class="card-title">MÁXIMA</span><strong><span id="maxSpeedPage">0</span><small> KM/H</small></strong></article>
         <article class="data-card"><span class="card-title">BRIDGE</span><strong id="bridgeVersion">--</strong></article>
+        <article class="data-card session-meta-card">
+          <span class="card-title">IDENTIFICAÇÃO DA SEÇÃO</span>
+          <div class="session-meta-form">
+            <label>PISTA<input id="sessionTrack" type="text" autocomplete="off" placeholder="Ex.: Spa-Francorchamps"></label>
+            <label>CARRO<input id="sessionCar" type="text" autocomplete="off" placeholder="Ex.: Ferrari 458 GT3"></label>
+            <button id="saveSessionMeta" type="button" class="primary-button session-meta-save">SALVAR PISTA E CARRO</button>
+            <div id="sessionMetaResult" class="session-meta-result"></div>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -146,5 +160,6 @@
   <script src="fuel-heatmap.js"></script>
   <script src="card-layout.js"></script>
   <script src="performance-copy-fuel-v09.js"></script>
+  <script src="lap-history-session.js"></script>
 </body>
 </html>
