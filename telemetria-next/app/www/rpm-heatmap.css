@@ -1,0 +1,54 @@
+/* Telemetria Next v0.6 — conta-giros em heatmap e limpeza da área central */
+
+.gauge-glow,
+.outer-ring,
+.rpm-inline,
+.speed-title {
+  display: none !important;
+}
+
+.rpm-gauge {
+  width: 88% !important;
+  border-color: rgba(0, 217, 244, .34) !important;
+  background:
+    radial-gradient(circle at 50% 49%, #010506 0 52%, transparent 53%),
+    radial-gradient(circle, rgba(0, 202, 239, .08) 0 55%, rgba(0, 70, 87, .13) 56% 70%, rgba(0, 0, 0, .97) 71%) !important;
+  box-shadow:
+    inset 0 0 34px rgba(0, 217, 244, .09),
+    0 0 34px rgba(0, 139, 181, .12) !important;
+}
+
+.rpm-ring { inset: 3.2% !important; }
+
+.rpm-tick::before {
+  background: #203236 !important;
+  opacity: .42;
+  transition: background .08s linear, box-shadow .08s linear, opacity .08s linear;
+}
+
+.rpm-tick.major::before { background: #2c4146 !important; }
+
+.rpm-tick:nth-child(-n+6) { --rpm-heat: #008cff; }
+.rpm-tick:nth-child(n+7):nth-child(-n+12) { --rpm-heat: #00d9ff; }
+.rpm-tick:nth-child(n+13):nth-child(-n+18) { --rpm-heat: #00f5a0; }
+.rpm-tick:nth-child(n+19):nth-child(-n+24) { --rpm-heat: #d7ff00; }
+.rpm-tick:nth-child(n+25):nth-child(-n+30) { --rpm-heat: #ff9d00; }
+.rpm-tick:nth-child(n+31) { --rpm-heat: #ff334f; }
+
+.rpm-tick.active::before,
+.rpm-tick.major.active::before,
+.rpm-tick.hot.active::before {
+  background: var(--rpm-heat) !important;
+  opacity: 1;
+  box-shadow: 0 0 8px var(--rpm-heat), 0 0 18px var(--rpm-heat) !important;
+}
+
+.gauge-center {
+  inset: 22% !important;
+  justify-content: center !important;
+}
+
+@media (max-width: 420px) {
+  .rpm-gauge { width: 91% !important; }
+  .gear-badge { bottom: 1.2% !important; }
+}
