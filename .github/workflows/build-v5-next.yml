@@ -125,7 +125,7 @@ jobs:
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
 
-      - name: Validar app, layout móvel e Tempo Total válido
+      - name: Validar app V5.4 compacto e funcional
         run: |
           set -euo pipefail
           test -s www/index.html
@@ -136,17 +136,23 @@ jobs:
           test -s www/rpm-heatmap.css
           test -s www/card-layout.css
           test -s www/card-layout.js
+          test -s www/compact-ui-v54.css
+          test -s www/gauge-v54.js
           node --check www/app.js
           node --check www/v5-lap-total.js
           node --check www/fuel-heatmap.js
           node --check www/card-layout.js
+          node --check www/gauge-v54.js
           grep -q 'id="bridgeUrl"' www/index.html
           grep -q 'id="ps5Ip"' www/index.html
           grep -q 'id="saveConnection"' www/index.html
+          grep -q 'id="maxSpeedGauge"' www/index.html
           grep -q 'v5-lap-total.js' www/index.html
           grep -q 'rpm-heatmap.css' www/index.html
           grep -q 'card-layout.css' www/index.html
           grep -q 'card-layout.js' www/index.html
+          grep -q 'compact-ui-v54.css' www/index.html
+          grep -q 'gauge-v54.js' www/index.html
           grep -q 'session.validLapTimes.reduce' www/v5-lap-total.js
           grep -q 'MIN_VALID_LAP_MS = 30_000' www/v5-lap-total.js
           grep -q 'MAX_VALID_LAP_MS = 900_000' www/v5-lap-total.js
@@ -156,6 +162,9 @@ jobs:
           grep -q 'data-layout-move="right"' www/card-layout.js
           grep -q 'data-layout-move="down"' www/card-layout.js
           grep -q 'gt7_v5_card_layout_v1' www/card-layout.js
+          grep -q 'const angle = -90' www/gauge-v54.js
+          grep -q 'mirrorMaximumSpeed' www/gauge-v54.js
+          grep -q '.max-speed-inline' www/compact-ui-v54.css
           grep -q '/api/config' www/app.js
           grep -q 'http://192.168.1.70:8790' www/app.js
           ! grep -q 'bridge-v408.js' www/index.html
@@ -194,10 +203,10 @@ jobs:
       - name: Preparar APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-V5.3-Layout-Movel-Heatmap-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-V5.4-Compacto-RPM-Semicirculo-debug.apk
 
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V5.3-Layout-Movel-Heatmap
-          path: telemetria-next/app/release/GT7-Telemetria-V5.3-Layout-Movel-Heatmap-debug.apk
+          name: GT7-Telemetria-V5.4-Compacto-RPM-Semicirculo
+          path: telemetria-next/app/release/GT7-Telemetria-V5.4-Compacto-RPM-Semicirculo-debug.apk
