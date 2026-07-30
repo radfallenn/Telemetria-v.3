@@ -1,0 +1,13 @@
+{
+  "name": "gt7-telemetria-v5-next-bridge",
+  "version": "5.2.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/protocol.js && node --check src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

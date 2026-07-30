@@ -1,0 +1,188 @@
+name: Build V5 Next Funcional
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - telemetria-v5
+    paths:
+      - 'telemetria-next/**'
+      - '.github/workflows/build-v5-next.yml'
+
+jobs:
+  validate-bridge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: telemetria-next/bridge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validar código e instaladores
+        run: |
+          set -euo pipefail
+          node --check src/protocol.js
+          node --check src/server.js
+          bash -n install.sh
+          bash -n install-casaos.sh
+          docker compose -f docker-compose.yml config >/dev/null
+
+      - name: Testar Bridge, IP editável e reinício UDP
+        env:
+          HTTP_PORT: '18790'
+          UDP_RECEIVE_PORT: '43740'
+          PS5_HEARTBEAT_PORT: '43739'
+          PS5_IP: '127.0.0.1'
+          DATA_DIR: '/tmp/gt7-v5-next'
+        run: |
+          set -euo pipefail
+          node src/server.js >/tmp/gt7-v5-next.log 2>&1 &
+          BRIDGE_PID=$!
+          trap 'kill "$BRIDGE_PID" 2>/dev/null || true; cat /tmp/gt7-v5-next.log' EXIT
+          node <<'NODE'
+          const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          (async () => {
+            let health;
+            for (let attempt = 0; attempt < 30; attempt += 1) {
+              try {
+                const response = await fetch('http://127.0.0.1:18790/api/health');
+                health = await response.json();
+                if (response.ok && health.ok && health.udpBound) break;
+              } catch {}
+              await wait(150);
+            }
+            if (!health?.ok || !health?.udpBound || health.httpPort !== 18790) {
+              throw new Error(`Bridge não iniciou: ${JSON.stringify(health)}`);
+            }
+
+            const configResponse = await fetch('http://127.0.0.1:18790/api/config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ps5Ip: '127.0.0.2' })
+            });
+            const config = await configResponse.json();
+            if (!configResponse.ok || !config.ok || config.config?.ps5Ip !== '127.0.0.2') {
+              throw new Error(`IP editável falhou: ${JSON.stringify(config)}`);
+            }
+
+            const restartResponse = await fetch('http://127.0.0.1:18790/api/restart', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}'
+            });
+            const restart = await restartResponse.json();
+            if (!restartResponse.ok || !restart.ok || !restart.state?.udpBound) {
+              throw new Error(`Reinício UDP falhou: ${JSON.stringify(restart)}`);
+            }
+            console.log('OK: Bridge ativa, IP do PS5 editável e UDP reiniciável.');
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Preparar Bridge para CasaOS
+        run: |
+          set -euo pipefail
+          rm -rf release/GT7-Bridge-V5.2-Next-CasaOS
+          mkdir -p release/GT7-Bridge-V5.2-Next-CasaOS
+          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-V5.2-Next-CasaOS/
+          cp -R src release/GT7-Bridge-V5.2-Next-CasaOS/src
+
+      - name: Publicar Bridge
+        uses: actions/upload-artifact@v4
+        with:
+          name: GT7-Bridge-V5.2-Next-CasaOS
+          path: telemetria-next/bridge/release/GT7-Bridge-V5.2-Next-CasaOS
+
+  build-apk:
+    runs-on: ubuntu-latest
+    needs: validate-bridge
+    defaults:
+      run:
+        working-directory: telemetria-next/app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Validar app funcional
+        run: |
+          set -euo pipefail
+          test -s www/index.html
+          test -s www/styles.css
+          test -s www/app.js
+          test -s www/v5-lap-total.js
+          test -s www/fuel-heatmap.js
+          node --check www/app.js
+          node --check www/v5-lap-total.js
+          node --check www/fuel-heatmap.js
+          grep -q 'id="bridgeUrl"' www/index.html
+          grep -q 'id="ps5Ip"' www/index.html
+          grep -q 'id="saveConnection"' www/index.html
+          grep -q 'v5-lap-total.js' www/index.html
+          grep -q 'session.lapTimes.reduce' www/v5-lap-total.js
+          grep -q '/api/config' www/app.js
+          grep -q 'http://192.168.1.70:8790' www/app.js
+          ! grep -q 'bridge-v408.js' www/index.html
+          ! grep -q 'patch-v4' www/index.html
+
+      - name: Gerar projeto Android
+        run: npx cap add android
+
+      - name: Sincronizar Android
+        run: npx cap sync android
+
+      - name: Liberar rede HTTP local
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text(encoding='utf-8')
+          if 'android.permission.INTERNET' not in text:
+              text = text.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
+          if 'android.permission.ACCESS_NETWORK_STATE' not in text:
+              text = text.replace('<application', '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <application', 1)
+          if 'android:usesCleartextTraffic=' not in text:
+              text = text.replace('<application', '<application android:usesCleartextTraffic="true"', 1)
+          manifest.write_text(text, encoding='utf-8')
+          PY
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.ACCESS_NETWORK_STATE' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+
+      - name: Gerar APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Preparar APK
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-V5.2-Next-Funcional-debug.apk
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GT7-Telemetria-V5.2-Next-Funcional
+          path: telemetria-next/app/release/GT7-Telemetria-V5.2-Next-Funcional-debug.apk

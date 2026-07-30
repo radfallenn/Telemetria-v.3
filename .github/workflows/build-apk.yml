@@ -1,10 +1,10 @@
-name: Build APK V5 Estável
+name: Build APK
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - telemetria-v5
+      - main
 
 jobs:
   build-apk:
@@ -117,12 +117,7 @@ jobs:
       - name: Final removal of ATRIB and marked cards
         run: node scripts/patch-v4-remove-attributes-and-marked-cards.js
 
-      - name: Apply stable V5 settings and total time
-        run: |
-          node --check scripts/patch-v5-stable-settings-total.js
-          node scripts/patch-v5-stable-settings-total.js
-
-      - name: Validate final V5 APK web package
+      - name: Validate final APK web package
         run: |
           set -euo pipefail
           test -s www/index.html
@@ -140,17 +135,18 @@ jobs:
           for(const id of ['speedKmh','rpm','gear','throttlePct','brakePct','fuelPct','bestLapMs','lastLapMs'])ok(ids.has(id),`atributo: ${id}`);
           const bridgeTags=index.match(/<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*bridge-v408\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script>/gi)||[];
           ok(bridgeTags.length===1,`uma única Bridge (${bridgeTags.length})`);
-          ok(index.includes('V5 STABLE EDITABLE NETWORK AND TOTAL UI'),'patch V5 instalado');
-          for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET editável: ${id}`);
-          for(const fn of ['v5BridgeUrl','v5SaveNetworkSettings','v5TestBridge','v5Reconnect','v5Restart','window.gt7V5Network'])ok(bridge.includes(fn),`controlador: ${fn}`);
-          ok(bridge.includes('const url = v5BridgeUrl() + path;'),'requisições usam URL salva');
-          ok(!/const\s+BRIDGE\s*=/.test(bridge),'sem endereço fixo antigo');
-          ok(index.includes('CONEXÃO EDITÁVEL'),'tela de configuração editável');
-          ok(index.includes('laps.reduce((sum,ms)=>sum+ms,0)'),'Tempo Total soma todas as voltas');
-          ok(index.includes('id="v5TotalValue"'),'card Tempo Total preservado');
-          ok(!index.includes("new Set(['rpmtotal','tyres','last','total'])"),'Tempo Total não é removido');
+          for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl'])ok(bridge.includes(fn),`função: ${fn}`);
+          for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
+          ok(index.includes('http://192.168.1.70:8789'),'nova Bridge 8789 configurada');
+          ok(index.includes('192.168.1.81'),'PS5 padrão configurado');
+          ok(index.includes('NOVA BRIDGE 8789'),'janela SET atualizada');
+          ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8789'"),'controlador usa 8789');
+          ok(!index.includes('http://192.168.1.70:8788'),'Bridge 8788 removida do APK final');
+          ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas do protocolo ocultas no SET');
+          ok((index.match(/V4 SET REBUILD BRIDGE CONTROL UI/g)||[]).length===1,'uma única janela SET');
           ok(!/<section\b[^>]*id=["']attributes["'][^>]*>/i.test(index),'página ATRIB removida');
           ok(!/<button\b[^>]*data-page=["']attributes["'][^>]*>/i.test(index),'botão ATRIB removido');
+          for(const field of ['rpmtotal','tyres','last','total'])ok(!new RegExp('<[^>]+data-field=["\\\']'+field+'["\\\']','i').test(index),`card removido: ${field}`);
           NODE
 
       - name: Add Android
@@ -181,10 +177,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V5.1-IPs-Editaveis-Tempo-Total-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/GT7-Telemetria-V4.28-Nova-Bridge-8789-debug.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V5.1-IPs-Editaveis-Tempo-Total
-          path: release/GT7-Telemetria-V5.1-IPs-Editaveis-Tempo-Total-debug.apk
+          name: GT7-Telemetria-V4.28-Nova-Bridge-8789
+          path: release/GT7-Telemetria-V4.28-Nova-Bridge-8789-debug.apk
