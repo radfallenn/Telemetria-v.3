@@ -90,16 +90,16 @@ jobs:
       - name: Preparar Bridge para CasaOS
         run: |
           set -euo pipefail
-          rm -rf release/GT7-Bridge-V5.2-CasaOS
-          mkdir -p release/GT7-Bridge-V5.2-CasaOS
-          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-V5.2-CasaOS/
-          cp -R src release/GT7-Bridge-V5.2-CasaOS/src
+          rm -rf release/GT7-Bridge-V5.3-CasaOS
+          mkdir -p release/GT7-Bridge-V5.3-CasaOS
+          cp package.json Dockerfile docker-compose.yml install-casaos.sh install.sh release/GT7-Bridge-V5.3-CasaOS/
+          cp -R src release/GT7-Bridge-V5.3-CasaOS/src
 
       - name: Publicar Bridge
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Bridge-V5.2-CasaOS
-          path: telemetria-next/bridge/release/GT7-Bridge-V5.2-CasaOS
+          name: GT7-Bridge-V5.3-CasaOS
+          path: telemetria-next/bridge/release/GT7-Bridge-V5.3-CasaOS
 
   build-apk:
     runs-on: ubuntu-latest
@@ -125,7 +125,7 @@ jobs:
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
 
-      - name: Validar app funcional e Tempo Total válido
+      - name: Validar app, layout móvel e Tempo Total válido
         run: |
           set -euo pipefail
           test -s www/index.html
@@ -133,17 +133,29 @@ jobs:
           test -s www/app.js
           test -s www/v5-lap-total.js
           test -s www/fuel-heatmap.js
+          test -s www/rpm-heatmap.css
+          test -s www/card-layout.css
+          test -s www/card-layout.js
           node --check www/app.js
           node --check www/v5-lap-total.js
           node --check www/fuel-heatmap.js
+          node --check www/card-layout.js
           grep -q 'id="bridgeUrl"' www/index.html
           grep -q 'id="ps5Ip"' www/index.html
           grep -q 'id="saveConnection"' www/index.html
           grep -q 'v5-lap-total.js' www/index.html
+          grep -q 'rpm-heatmap.css' www/index.html
+          grep -q 'card-layout.css' www/index.html
+          grep -q 'card-layout.js' www/index.html
           grep -q 'session.validLapTimes.reduce' www/v5-lap-total.js
           grep -q 'MIN_VALID_LAP_MS = 30_000' www/v5-lap-total.js
           grep -q 'MAX_VALID_LAP_MS = 900_000' www/v5-lap-total.js
           grep -q 'value.valid === false' www/v5-lap-total.js
+          grep -q 'data-layout-move="up"' www/card-layout.js
+          grep -q 'data-layout-move="left"' www/card-layout.js
+          grep -q 'data-layout-move="right"' www/card-layout.js
+          grep -q 'data-layout-move="down"' www/card-layout.js
+          grep -q 'gt7_v5_card_layout_v1' www/card-layout.js
           grep -q '/api/config' www/app.js
           grep -q 'http://192.168.1.70:8790' www/app.js
           ! grep -q 'bridge-v408.js' www/index.html
@@ -182,10 +194,10 @@ jobs:
       - name: Preparar APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-V5.2-Tempo-Total-Voltas-Validas-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/GT7-Telemetria-V5.3-Layout-Movel-Heatmap-debug.apk
 
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: GT7-Telemetria-V5.2-Tempo-Total-Voltas-Validas
-          path: telemetria-next/app/release/GT7-Telemetria-V5.2-Tempo-Total-Voltas-Validas-debug.apk
+          name: GT7-Telemetria-V5.3-Layout-Movel-Heatmap
+          path: telemetria-next/app/release/GT7-Telemetria-V5.3-Layout-Movel-Heatmap-debug.apk
