@@ -7,6 +7,9 @@
   <title>GT7 Telemetria Next</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="fuel-heatmap.css">
+  <link rel="stylesheet" href="rpm-heatmap.css">
+  <link rel="stylesheet" href="card-layout.css">
+  <link rel="stylesheet" href="compact-ui-v06.css">
 </head>
 <body>
   <main class="app-shell">
@@ -30,6 +33,9 @@
           <div class="gauge-center">
             <div class="rpm-inline"><strong id="rpm">0</strong><span>RPM</span></div>
             <div class="speed-title">VELOCIDADE</div>
+            <div class="max-speed-inline" aria-label="Velocidade máxima da seção">
+              <span>MÁX.</span><strong id="maxSpeedGauge">0</strong><small>KM/H</small>
+            </div>
             <strong id="speed" class="speed-value">0</strong>
             <div class="speed-unit">KM/H</div>
           </div>
@@ -38,14 +44,8 @@
       </section>
 
       <section class="dashboard-grid">
-        <article class="data-card half">
-          <span class="card-title">RPM</span>
-          <strong id="rpmCard">0</strong>
-        </article>
-        <article class="data-card half">
-          <span class="card-title">TEMPO TOTAL</span>
-          <strong id="totalTime">--</strong>
-        </article>
+        <article class="data-card half"><span class="card-title">RPM</span><strong id="rpmCard">0</strong></article>
+        <article class="data-card half"><span class="card-title">TEMPO TOTAL</span><strong id="totalTime">--</strong></article>
 
         <article id="fuelCard" class="data-card full fuel-card">
           <div class="card-row"><span class="card-title">COMBUSTÍVEL</span><strong id="fuel">--%</strong></div>
@@ -53,35 +53,16 @@
         </article>
 
         <article class="data-card half accent-cyan">
-          <div class="card-controls" aria-hidden="true"><i>▲</i><i>◀</i><i>▶</i><i>▼</i></div>
-          <span class="card-title">ACELERADOR</span>
-          <strong id="throttle">0%</strong>
-          <div class="bar"><i id="throttleBar"></i></div>
+          <span class="card-title">ACELERADOR</span><strong id="throttle">0%</strong><div class="bar"><i id="throttleBar"></i></div>
         </article>
         <article class="data-card half accent-pink">
-          <div class="card-controls" aria-hidden="true"><i>▲</i><i>◀</i><i>▶</i><i>▼</i></div>
-          <span class="card-title">FREIO</span>
-          <strong id="brake">0%</strong>
-          <div class="bar"><i id="brakeBar"></i></div>
+          <span class="card-title">FREIO</span><strong id="brake">0%</strong><div class="bar"><i id="brakeBar"></i></div>
         </article>
 
-        <article class="data-card half">
-          <span class="card-title">MELHOR VOLTA</span>
-          <strong id="bestLap">--:--.---</strong>
-        </article>
-        <article class="data-card half">
-          <span class="card-title">VOLTAS VÁLIDAS</span>
-          <strong id="validLaps">0</strong>
-        </article>
-
-        <article class="data-card half">
-          <span class="card-title">ÚLTIMA VOLTA</span>
-          <strong id="lastLap">--:--.---</strong>
-        </article>
-        <article class="data-card half">
-          <span class="card-title">VELOCIDADE MÁX.</span>
-          <strong><span id="maxSpeed">0</span><small> KM/H</small></strong>
-        </article>
+        <article class="data-card half"><span class="card-title">MELHOR VOLTA</span><strong id="bestLap">--:--.---</strong></article>
+        <article class="data-card half"><span class="card-title">VOLTAS VÁLIDAS</span><strong id="validLaps">0</strong></article>
+        <article class="data-card half"><span class="card-title">ÚLTIMA VOLTA</span><strong id="lastLap">--:--.---</strong></article>
+        <article class="data-card half"><span class="card-title">VELOCIDADE MÁX.</span><strong><span id="maxSpeed">0</span><small> KM/H</small></strong></article>
 
         <article class="data-card full tyre-card">
           <span class="card-title">TEMPERATURA DOS PNEUS</span>
@@ -102,7 +83,7 @@
         <article class="data-card"><span class="card-title">VOLTA ATUAL</span><strong id="lapNumber">0 / 0</strong></article>
         <article class="data-card"><span class="card-title">MELHOR VOLTA</span><strong id="bestLapPage">--:--.---</strong></article>
         <article class="data-card"><span class="card-title">ÚLTIMA VOLTA</span><strong id="lastLapPage">--:--.---</strong></article>
-        <article class="data-card"><span class="card-title">TOTAL DA SEÇÃO</span><strong id="totalTimePage">--</strong></article>
+        <article class="data-card"><span class="card-title">TOTAL DAS VOLTAS</span><strong id="totalTimePage">--</strong></article>
       </div>
     </section>
 
@@ -143,6 +124,9 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="gauge-v06.js"></script>
+  <script src="valid-lap-total.js"></script>
   <script src="fuel-heatmap.js"></script>
+  <script src="card-layout.js"></script>
 </body>
 </html>
