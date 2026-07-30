@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="fuel-heatmap.css">
   <link rel="stylesheet" href="rpm-heatmap.css">
+  <link rel="stylesheet" href="card-layout.css">
 </head>
 <body>
   <main class="app-shell">
@@ -54,13 +55,11 @@
         </article>
 
         <article class="data-card half accent-cyan">
-          <div class="card-controls" aria-hidden="true"><i>▲</i><i>◀</i><i>▶</i><i>▼</i></div>
           <span class="card-title">ACELERADOR</span>
           <strong id="throttle">0%</strong>
           <div class="bar"><i id="throttleBar"></i></div>
         </article>
         <article class="data-card half accent-pink">
-          <div class="card-controls" aria-hidden="true"><i>▲</i><i>◀</i><i>▶</i><i>▼</i></div>
           <span class="card-title">FREIO</span>
           <strong id="brake">0%</strong>
           <div class="bar"><i id="brakeBar"></i></div>
@@ -146,5 +145,6 @@
   <script src="app.js"></script>
   <script src="v5-lap-total.js"></script>
   <script src="fuel-heatmap.js"></script>
+  <script src="card-layout.js"></script>
 </body>
 </html>
