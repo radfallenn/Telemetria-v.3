@@ -3,7 +3,7 @@
 (function () {
   const STORAGE_KEY = 'gt7_next_dashboard_layout_v1';
   const SVG_NS = 'http://www.w3.org/2000/svg';
-  const ARC_LENGTH = 280;
+  let gaugeSequence = 0;
 
   function numericText(id) {
     const raw = String(document.getElementById(id)?.textContent || '').replace(',', '.');
@@ -20,19 +20,28 @@
     svg.setAttribute('preserveAspectRatio', 'none');
     svg.setAttribute('aria-hidden', 'true');
 
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const clip = document.createElementNS(SVG_NS, 'clipPath');
+    const clipId = `sideGaugeClip${++gaugeSequence}`;
+    clip.setAttribute('id', clipId);
+    const reveal = document.createElementNS(SVG_NS, 'rect');
+    reveal.setAttribute('x', '0');
+    reveal.setAttribute('y', '360');
+    reveal.setAttribute('width', '100');
+    reveal.setAttribute('height', '0');
+    clip.appendChild(reveal);
+    defs.appendChild(clip);
+
     const track = document.createElementNS(SVG_NS, 'path');
     track.setAttribute('d', pathData);
-    track.setAttribute('pathLength', String(ARC_LENGTH));
     track.setAttribute('class', 'side-gauge-track');
 
     const progress = document.createElementNS(SVG_NS, 'path');
     progress.setAttribute('d', pathData);
-    progress.setAttribute('pathLength', String(ARC_LENGTH));
     progress.setAttribute('class', 'side-gauge-progress');
-    progress.style.strokeDasharray = String(ARC_LENGTH);
-    progress.style.strokeDashoffset = String(ARC_LENGTH);
+    progress.setAttribute('clip-path', `url(#${clipId})`);
 
-    svg.append(track, progress);
+    svg.append(defs, track, progress);
 
     const caption = document.createElement('div');
     caption.className = 'side-gauge-label';
@@ -42,6 +51,7 @@
     wrapper.dataset.valueId = valueId;
     wrapper.dataset.maxValue = String(maxValue);
     wrapper._progress = progress;
+    wrapper._reveal = reveal;
     wrapper._value = caption.querySelector('strong');
     return wrapper;
   }
@@ -53,8 +63,8 @@
     const layer = document.createElement('div');
     layer.className = 'side-gauges';
 
-    const fuelPath = 'M 88 330 C 25 280, 16 90, 88 30';
-    const rpmPath = 'M 12 30 C 84 90, 75 280, 12 330';
+    const fuelPath = 'M 82 326 C 28 270, 24 94, 82 34';
+    const rpmPath = 'M 18 34 C 76 94, 72 270, 18 326';
     layer.append(
       createArc('left', 'COMB.', 'fuel', 100, fuelPath),
       createArc('right', 'RPM', 'rpmCard', 10000, rpmPath)
@@ -80,7 +90,9 @@
       const value = numericText(gauge.dataset.valueId);
       const max = Number(gauge.dataset.maxValue) || 100;
       const ratio = Math.max(0, Math.min(1, value / max));
-      gauge._progress.style.strokeDashoffset = String(ARC_LENGTH * (1 - ratio));
+      const visibleHeight = 360 * ratio;
+      gauge._reveal.setAttribute('y', String(360 - visibleHeight));
+      gauge._reveal.setAttribute('height', String(visibleHeight));
       gauge._value.textContent = gauge.classList.contains('left') ? `${Math.round(value)}%` : String(Math.round(value));
       const color = gauge.classList.contains('left') ? colorFuel(ratio * 100) : colorRpm(ratio * 100);
       gauge._progress.style.stroke = color;
