@@ -1,0 +1,56 @@
+/* Histórico de todas as voltas e identificação manual da seção */
+.lap-history-card,
+.session-meta-card { grid-column: 1 / -1; }
+
+.lap-history-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.lap-history-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(21, 55, 59, .8);
+  border-radius: 14px;
+  background: rgba(0, 10, 12, .72);
+}
+
+.lap-history-row strong { font-size: 18px; font-weight: 500; }
+.lap-history-row span { color: var(--muted); font-size: 11px; }
+.lap-history-row .lap-status { color: var(--cyan); font-weight: 800; }
+.lap-history-row.invalid .lap-status { color: var(--pink); }
+.lap-history-empty { color: var(--muted); font-size: 12px; }
+
+.session-meta-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.session-meta-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.session-meta-form input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #24484e;
+  border-radius: 13px;
+  outline: none;
+  color: #fff;
+  background: #020708;
+  font-size: 15px;
+}
+
+.session-meta-form input:focus { border-color: var(--cyan); }
+.session-meta-save { margin-top: 2px; }
+.session-meta-result { min-height: 18px; color: var(--cyan); font-size: 11px; }

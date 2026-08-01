@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <title>GT7 Telemetria Next</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="fuel-heatmap.css">
+  <link rel="stylesheet" href="rpm-heatmap.css">
+  <link rel="stylesheet" href="card-layout.css">
+  <link rel="stylesheet" href="compact-ui-v06.css">
+  <link rel="stylesheet" href="gauge-v07.css">
+  <link rel="stylesheet" href="average-laps.css">
+  <link rel="stylesheet" href="lap-history-session.css">
+  <link rel="stylesheet" href="performance-chart.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section id="dashPage" class="page active">
+      <button id="openSettings" class="bridge-pill" aria-label="Abrir configurações">
+        <span id="statusDot" class="status-dot"></span>
+        <span><strong id="connectionStatus">OFF</strong><small id="latency">-- ms</small></span>
+      </button>
+
+      <section class="gauge-stage" aria-label="Velocidade e RPM">
+        <div class="gauge-glow"></div>
+        <div class="outer-ring" id="outerRing"></div>
+        <div class="rpm-gauge">
+          <div class="rpm-ring" id="rpmRing"></div>
+          <div id="rpmProgressArc" class="rpm-progress-arc" role="progressbar" aria-label="RPM atual" aria-valuemin="0" aria-valuemax="10000" aria-valuenow="0"></div>
+          <span class="scale-number n0">0</span><span class="scale-number n2">2</span><span class="scale-number n4">4</span><span class="scale-number n6">6</span><span class="scale-number n8">8</span><span class="scale-number n10">10</span>
+          <div class="gauge-center">
+            <div class="rpm-inline"><strong id="rpm">0</strong><span>RPM</span></div>
+            <div class="speed-title">VELOCIDADE</div>
+            <div class="max-speed-inline" aria-label="Velocidade máxima da seção"><span>MÁX.</span><strong id="maxSpeedGauge">0</strong><small>KM/H</small></div>
+            <strong id="speed" class="speed-value">0</strong><div class="speed-unit">KM/H</div>
+          </div>
+        </div>
+        <div id="gear" class="gear-badge">N</div>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="data-card half"><span class="card-title">RPM</span><strong id="rpmCard">0</strong></article>
+        <article class="data-card half"><span class="card-title">TEMPO TOTAL</span><strong id="totalTime">--</strong></article>
+
+        <article id="fuelCard" class="data-card full fuel-card">
+          <div class="card-row"><span class="card-title">COMBUSTÍVEL</span><strong id="fuel">--%</strong></div>
+          <div id="fuelSegments" class="fuel-segments" role="progressbar" aria-label="Nível de combustível" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        </article>
+
+        <article id="performanceCard" class="data-card full performance-card">
+          <div class="performance-head">
+            <span class="card-title">DESEMPENHO DAS VOLTAS</span>
+            <div class="performance-tabs" role="tablist" aria-label="Modo do gráfico">
+              <button class="performance-tab active" data-performance-mode="trend" type="button">EVOLUÇÃO</button>
+              <button class="performance-tab" data-performance-mode="delta" type="button">DELTA</button>
+            </div>
+          </div>
+          <div class="performance-summary"><strong id="performanceStatus" class="performance-status flat">AGUARDANDO VOLTAS</strong><span id="performanceDelta" class="performance-delta">--</span></div>
+          <div class="performance-chart" role="img" aria-label="Evolução dos tempos das voltas">
+            <div id="performanceBars" class="performance-bars"></div>
+            <div id="performanceEmpty" class="performance-empty">Complete duas voltas válidas para iniciar o gráfico.</div>
+          </div>
+        </article>
+
+        <article class="data-card half accent-cyan"><span class="card-title">ACELERADOR</span><strong id="throttle">0%</strong><div class="bar"><i id="throttleBar"></i></div></article>
+        <article class="data-card half accent-pink"><span class="card-title">FREIO</span><strong id="brake">0%</strong><div class="bar"><i id="brakeBar"></i></div></article>
+        <article class="data-card half"><span class="card-title">MELHOR VOLTA</span><strong id="bestLap">--:--.---</strong></article>
+        <article class="data-card half"><span class="card-title">VOLTAS VÁLIDAS</span><strong id="validLaps">0</strong></article>
+        <article class="data-card half"><span class="card-title">ÚLTIMA VOLTA</span><strong id="lastLap">--:--.---</strong></article>
+        <article class="data-card half"><span class="card-title">VELOCIDADE MÁX.</span><strong><span id="maxSpeed">0</span><small> KM/H</small></strong></article>
+        <article class="data-card full tyre-card"><span class="card-title">TEMPERATURA DOS PNEUS</span><div class="tyre-grid"><div><span>DE</span><strong id="tyreFL">--°</strong></div><div><span>DD</span><strong id="tyreFR">--°</strong></div><div><span>TE</span><strong id="tyreRL">--°</strong></div><div><span>TD</span><strong id="tyreRR">--°</strong></div></div></article>
+      </section>
+      <footer class="dash-footer"><span id="footerState">Bridge ainda não conectada</span><span id="updatedAt">--</span></footer>
+    </section>
+
+    <section id="lapsPage" class="page secondary-page">
+      <header><span>GT7 TELEMETRIA</span><h1>VOLTAS</h1></header>
+      <div class="secondary-grid">
+        <article class="data-card"><span class="card-title">VOLTA ATUAL</span><strong id="lapNumber">0 / 0</strong></article>
+        <article class="data-card"><span class="card-title">MELHOR VOLTA</span><strong id="bestLapPage">--:--.---</strong></article>
+        <article class="data-card"><span class="card-title">ÚLTIMA VOLTA</span><strong id="lastLapPage">--:--.---</strong></article>
+        <article class="data-card"><span class="card-title">TOTAL DAS VOLTAS</span><strong id="totalTimePage">--</strong></article>
+        <article class="data-card lap-history-card"><div class="card-row"><span class="card-title">TODAS AS VOLTAS</span><strong id="allLapsCount">0</strong></div><div id="allLapsList" class="lap-history-list"><div class="lap-history-empty">Nenhuma volta concluída registrada.</div></div></article>
+      </div>
+    </section>
+
+    <section id="averagePage" class="page secondary-page average-page"><header><span>GT7 TELEMETRIA</span><h1>MÉDIA DE VOLTAS</h1></header><div class="secondary-grid"><article class="data-card average-hero"><span class="card-title">TEMPO MÉDIO</span><strong id="averageLapTime">--:--.---</strong><div class="average-formula">Soma dos tempos das voltas válidas ÷ quantidade de voltas válidas</div></article><article class="data-card"><span class="card-title">TEMPO TOTAL</span><strong id="averageTotalTime">--</strong></article><article class="data-card"><span class="card-title">VOLTAS USADAS</span><strong id="averageLapCount">0</strong></article></div></section>
+
+    <section id="sessionPage" class="page secondary-page">
+      <header><span>GT7 TELEMETRIA</span><h1>SEÇÃO</h1></header>
+      <div class="secondary-grid">
+        <article class="data-card"><span class="card-title">STATUS</span><strong id="sessionStatus">AGUARDANDO</strong></article>
+        <article class="data-card"><span class="card-title">PACOTES GT7</span><strong id="packetRate">0/s</strong></article>
+        <article class="data-card"><span class="card-title">MÁXIMA</span><strong><span id="maxSpeedPage">0</span><small> KM/H</small></strong></article>
+        <article class="data-card"><span class="card-title">BRIDGE</span><strong id="bridgeVersion">--</strong></article>
+        <article class="data-card session-meta-card"><span class="card-title">IDENTIFICAÇÃO DA SEÇÃO</span><div class="session-meta-form"><label>PISTA<input id="sessionTrack" type="text" autocomplete="off" placeholder="Ex.: Spa-Francorchamps"></label><label>CARRO<input id="sessionCar" type="text" autocomplete="off" placeholder="Ex.: Ferrari 458 GT3"></label><button id="saveSessionMeta" type="button" class="primary-button session-meta-save">SALVAR PISTA E CARRO</button><div id="sessionMetaResult" class="session-meta-result"></div></div></article>
+      </div>
+    </section>
+
+    <section id="telemetryPage" class="page secondary-page"><header><span>GT7 TELEMETRIA</span><h1>TELEMETRIA</h1></header><article class="data-card telemetry-status"><span class="card-title">DIAGNÓSTICO</span><strong id="bridgeLabel">Sem conexão</strong><pre id="rawTelemetry">Aguardando dados...</pre></article></section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navegação principal"><button class="active" data-page="dashPage">DASH</button><button data-page="lapsPage">VOLTAS</button><button data-page="averagePage">MÉDIA</button><button data-page="sessionPage">SEÇÃO</button><button data-page="telemetryPage">TELEMETRIA</button><button id="navSettings">SET</button></nav>
+
+  <div id="settingsModal" class="modal" aria-hidden="true"><div class="modal-panel"><div class="modal-head"><div><span>CONEXÃO E DIAGNÓSTICO</span><h2>Configurações</h2></div><button id="closeSettings" class="close-button">×</button></div><label>URL DA BRIDGE<input id="bridgeUrl" type="url" placeholder="http://192.168.1.70:8790"></label><label>IP DO PS5<input id="ps5Ip" inputmode="decimal" placeholder="192.168.1.81"></label><div id="settingsResult" class="settings-result">Teste a Bridge para verificar HTTP, UDP e pacotes do GT7.</div><button id="testConnection" class="secondary-button">TESTAR BRIDGE</button><button id="restartBridge" class="secondary-button">REINICIAR RECEPÇÃO UDP</button><button id="saveConnection" class="primary-button">SALVAR E CONECTAR</button></div></div>
+
+  <script src="app.js"></script>
+  <script src="gauge-v07.js"></script>
+  <script src="valid-lap-total.js"></script>
+  <script src="fuel-heatmap.js"></script>
+  <script src="card-layout.js"></script>
+  <script src="performance-copy-fuel-v09.js"></script>
+  <script src="lap-history-session.js"></script>
+  <script src="performance-chart.js"></script>
+</body>
+</html>

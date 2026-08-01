@@ -1,0 +1,21 @@
+/* V0.8 — aba Média de Voltas */
+.average-page .average-hero {
+  grid-column: 1 / -1;
+  min-height: 190px;
+  display: grid;
+  align-content: center;
+  text-align: center;
+}
+.average-page .average-hero .card-title { color: var(--cyan); }
+.average-page .average-hero strong {
+  margin-top: 18px !important;
+  font-size: clamp(48px, 13vw, 82px) !important;
+}
+.average-formula {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.bottom-nav { grid-template-columns: repeat(6, 1fr) !important; }
+.bottom-nav button { font-size: clamp(8px, 2.25vw, 12px) !important; padding: 0 2px; }
