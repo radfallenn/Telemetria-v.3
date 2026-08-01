@@ -5,17 +5,18 @@ html[data-dashboard-layout="side"] .gauge-stage{height:min(72vw,510px);max-heigh
 html[data-dashboard-layout="side"] .rpm-gauge{width:min(68vw,440px);height:min(68vw,440px);transform:scale(.82);transform-origin:center}
 html[data-dashboard-layout="side"] .outer-ring,html[data-dashboard-layout="side"] .gauge-glow{transform:scale(.84)}
 html[data-dashboard-layout="side"] .gear-badge{transform:scale(.86);transform-origin:center top}
-html[data-dashboard-layout="side"] .side-gauges{display:block;position:absolute;inset:2% 0 8%;z-index:5;pointer-events:none}
-.side-gauge{position:absolute;top:6%;bottom:10%;width:17%;display:flex;align-items:center;justify-content:center}
-.side-gauge.left{left:0}.side-gauge.right{right:0}
+html[data-dashboard-layout="side"] .side-gauges{display:block;position:absolute;inset:5% 0 10%;z-index:5;pointer-events:none}
+.side-gauge{position:absolute;top:10%;bottom:15%;width:13%;display:flex;align-items:center;justify-content:center}
+.side-gauge.left{left:10%}.side-gauge.right{right:10%}
 .side-gauge svg{width:100%;height:100%;overflow:visible}
-.side-gauge-track{fill:none;stroke:#102e33;stroke-width:13;stroke-linecap:round;opacity:.9}
-.side-gauge-progress{fill:none;stroke-width:13;stroke-linecap:round;filter:drop-shadow(0 0 5px currentColor);transition:stroke-dashoffset .18s linear,stroke .25s ease}
+.side-gauge-track,.side-gauge-progress{fill:none;stroke-width:8;stroke-linecap:round;stroke-dasharray:7 9;vector-effect:non-scaling-stroke}
+.side-gauge-track{stroke:#12343a;opacity:.72}
+.side-gauge-progress{filter:drop-shadow(0 0 4px currentColor);transition:stroke .25s ease}
 .side-gauge.left .side-gauge-progress{stroke:#24e36a;color:#24e36a}
 .side-gauge.right .side-gauge-progress{stroke:#08d9f4;color:#08d9f4}
-.side-gauge-label{position:absolute;top:49%;display:flex;flex-direction:column;align-items:center;gap:2px;transform:translateY(-50%);font-size:9px;font-weight:900;letter-spacing:.8px;color:#71878b}
-.side-gauge-label strong{font-size:18px;font-weight:300;letter-spacing:0;color:#eaffff}
-.side-gauge.left .side-gauge-label{left:1px}.side-gauge.right .side-gauge-label{right:1px}
+.side-gauge-label{position:absolute;top:49%;display:flex;flex-direction:column;align-items:center;gap:1px;transform:translateY(-50%);font-size:7px;font-weight:900;letter-spacing:.7px;color:#71878b;text-shadow:0 1px 2px #000}
+.side-gauge-label strong{font-size:13px;font-weight:400;letter-spacing:0;color:#eaffff}
+.side-gauge.left .side-gauge-label{left:-8px}.side-gauge.right .side-gauge-label{right:-8px}
 html[data-dashboard-layout="side"] #fuelCard{display:none}
 html[data-dashboard-layout="side"] .dashboard-grid{margin-top:-12px}
-@media(max-width:420px){html[data-dashboard-layout="side"] .gauge-stage{height:73vw}.side-gauge{width:18%}.side-gauge-track,.side-gauge-progress{stroke-width:11}.side-gauge-label strong{font-size:15px}.side-gauge-label{font-size:8px}}
+@media(max-width:420px){html[data-dashboard-layout="side"] .gauge-stage{height:73vw}.side-gauge{width:12.5%;top:11%;bottom:16%}.side-gauge.left{left:9.5%}.side-gauge.right{right:9.5%}.side-gauge-track,.side-gauge-progress{stroke-width:6.5;stroke-dasharray:6 8}.side-gauge-label strong{font-size:11px}.side-gauge-label{font-size:6px}.side-gauge.left .side-gauge-label{left:-7px}.side-gauge.right .side-gauge-label{right:-7px}}
