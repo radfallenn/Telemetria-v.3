@@ -11,16 +11,13 @@
         .map((lap) => ({ lap: Number(lap.lap), timeMs: Number(lap.timeMs) }))
         .filter((lap) => Number.isFinite(lap.timeMs) && lap.timeMs > 0);
     }
-
     try {
       const saved = JSON.parse(localStorage.getItem(LAPS_KEY) || '{}');
       return (Array.isArray(saved.laps) ? saved.laps : [])
         .filter((lap) => lap?.valid !== false)
         .map((lap) => ({ lap: Number(lap.lap), timeMs: Number(lap.timeMs) }))
         .filter((lap) => Number.isFinite(lap.timeMs) && lap.timeMs > 0);
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }
 
   function averageTime(laps) {
@@ -57,19 +54,14 @@
     const shownLaps = allLaps.slice(-MAX_BARS);
     const deviations = shownLaps.map((lap) => lap.timeMs - average);
     const maxMagnitude = Math.max(1, ...deviations.map((value) => Math.abs(value)));
-
     return shownLaps.map((lap, index) => {
       const delta = deviations[index];
       const state = classify(delta);
-      const height = state === 'average'
-        ? 4
-        : Math.max(7, Math.round(Math.abs(delta) / maxMagnitude * 43));
+      const height = state === 'average' ? 4 : Math.max(7, Math.round(Math.abs(delta) / maxMagnitude * 43));
       const title = `Volta ${lap.lap}: ${formatLap(lap.timeMs)} (${formatDifference(delta)} da média)`;
-
       return `<span class="performance-column" title="${esc(title)}">` +
         `<i class="performance-bar ${state}" style="--bar-height:${height}px"></i>` +
-        `<small>${esc(lap.lap)}</small>` +
-      `</span>`;
+        `<small>${esc(lap.lap)}</small></span>`;
     }).join('');
   }
 
@@ -95,10 +87,8 @@
     }
 
     const average = averageTime(laps);
-    const latest = laps.at(-1);
-    const latestDelta = latest.timeMs - average;
+    const latestDelta = laps.at(-1).timeMs - average;
     const state = classify(latestDelta);
-
     empty.hidden = true;
     chart.innerHTML = renderBars(laps, average);
     chart.dataset.average = formatLap(average);
@@ -113,11 +103,25 @@
       status.className = 'performance-status flat';
       status.textContent = 'NA MÉDIA';
     }
-
     deltaLabel.textContent = formatDifference(latestDelta);
   }
 
+  function loadLayoutVariants() {
+    if (!document.querySelector('link[href="layout-variants.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'layout-variants.css';
+      document.head.appendChild(link);
+    }
+    if (!document.querySelector('script[src="layout-variants.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'layout-variants.js';
+      document.body.appendChild(script);
+    }
+  }
+
   function install() {
+    loadLayoutVariants();
     window.addEventListener('gt7-lap-recorded', () => { lastSignature = ''; render(); });
     window.addEventListener('gt7-laps-reset', () => { lastSignature = ''; render(); });
     render();
