@@ -1,19 +1,30 @@
 const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
-const files = ['www/bridge-v408.js', 'www/index.html'];
+const bridgeFile = path.join(root, 'www', 'bridge-v408.js');
+const indexFile = path.join(root, 'www', 'index.html');
 const from = '192.168.1.70:8789';
 const to = '192.168.1.70:8788';
-for (const relative of files) {
-  const file = path.join(root, relative);
-  let source = fs.readFileSync(file, 'utf8');
-  if (!source.includes(from)) throw new Error(relative + ': endereço 8789 não encontrado; build interrompido para evitar APK inconsistente');
-  source = source.split(from).join(to);
-  fs.writeFileSync(file, source);
-}
-const bridge = fs.readFileSync(path.join(root, files[0]), 'utf8');
-const html = fs.readFileSync(path.join(root, files[1]), 'utf8');
+
+let bridge = fs.readFileSync(bridgeFile, 'utf8');
+let html = fs.readFileSync(indexFile, 'utf8');
+bridge = bridge.split(from).join(to);
+
+// Migrate addresses persisted by previous APK versions. Updating the default
+// alone is insufficient because Android WebView preserves localStorage.
+const oldGetter = "function getBridgeUrl(){return normalizeBridgeUrl(localStorage.getItem('gt7_bridge_url')||DEFAULT_BRIDGE)}";
+const newGetter = "function getBridgeUrl(){const saved=localStorage.getItem('gt7_bridge_url')||localStorage.getItem('gt7_bridge')||'';const stale=/^https?:\\/\\/192\\.168\\.1\\.(70:(8787|8789)|81:8788)\\/?$/i.test(saved);const value=stale||!saved?DEFAULT_BRIDGE:normalizeBridgeUrl(saved);localStorage.setItem('gt7_bridge_url',value);localStorage.setItem('gt7_bridge',value);return value}";
+if (bridge.includes(oldGetter)) bridge = bridge.replace(oldGetter, newGetter);
+else if (!bridge.includes("const stale=/^https?:")) throw new Error('Migração de endereço salvo não foi instalada no controlador');
+
+const oldFill = "q('setBridgeUrl').value=localStorage.getItem('gt7_bridge_url')||D.bridgeUrl;";
+const newFill = "const saved=localStorage.getItem('gt7_bridge_url')||localStorage.getItem('gt7_bridge')||'';const stale=/^https?:\\/\\/192\\.168\\.1\\.(70:(8787|8789)|81:8788)\\/?$/i.test(saved);const bridgeValue=stale||!saved?D.bridgeUrl:saved;q('setBridgeUrl').value=bridgeValue;localStorage.setItem('gt7_bridge_url',bridgeValue);localStorage.setItem('gt7_bridge',bridgeValue);";
+if (html.includes(oldFill)) html = html.replace(oldFill, newFill);
+
+fs.writeFileSync(bridgeFile, bridge);
+fs.writeFileSync(indexFile, html);
 if (!bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'")) throw new Error('Controlador não aponta para Bridge 8788');
+if (!bridge.includes('const stale=')) throw new Error('Migração de localStorage ausente');
 if (!html.includes('http://192.168.1.70:8788')) throw new Error('SET não aponta para Bridge 8788');
-if (html.includes('192.168.1.70:8789') || bridge.includes('192.168.1.70:8789')) throw new Error('Referência à porta antiga 8789');
-console.log('OK: APK alinhado à Bridge Raspberry 192.168.1.70:8788; PS5 192.168.1.81.');
+if (html.includes(from)) throw new Error('Referência à porta antiga 8789');
+console.log('OK: Bridge Raspberry 192.168.1.70:8788; PS5 192.168.1.81; endereços antigos migrados automaticamente.');
