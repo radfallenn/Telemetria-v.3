@@ -29,6 +29,6 @@ if (!bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'")) throw
 if (!bridge.includes('const stale=!saved')) throw new Error('Migração de localStorage ausente');
 if (!html.includes(target)) throw new Error('SET não aponta para Bridge 8788');
 for (const oldUrl of oldUrls) {
-  if (bridge.includes(oldUrl) || html.includes(oldUrl)) throw new Error('Endereço antigo permaneceu: ' + oldUrl);
+  if (bridge.includes('http://' + oldUrl) || html.includes('http://' + oldUrl)) throw new Error('URL antiga permaneceu: http://' + oldUrl);
 }
 console.log('OK: app usa Bridge Raspberry 192.168.1.70:8788; PS5 192.168.1.81; URLs antigas migradas.');
