@@ -755,7 +755,12 @@ async function startUdp() {
     scheduleHeartbeat();
   });
 
-  socket.bind(UDP_LISTEN_PORT, '0.0.0.0');
+  await new Promise((resolve, reject) => {
+    socket.once('listening', resolve);
+    socket.once('error', reject);
+    socket.bind(UDP_LISTEN_PORT, '0.0.0.0');
+  });
+  return statusSnapshot();
 }
 
 async function restartUdp() {
