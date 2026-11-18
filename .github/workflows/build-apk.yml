@@ -42,7 +42,7 @@ jobs:
           ok(server.includes('sameSocket: true'),'heartbeat e recepção no socket GT7');
           ok(server.includes("'/api/restart'"),'endpoint de reinício');
           ok(install.includes('HTTP_PORT: "8788"'),'instalador Raspberry usa 8788');
-          ok(install.includes('192.168.1.81'),'IP PS5 padrão');
+          ok(install.includes('192.168.1.77'),'IP PS5 padrão');
           NODE
           rm -rf /tmp/telemetria-bridge-ci
           mkdir -p /tmp/telemetria-bridge-ci/data
@@ -136,7 +136,7 @@ jobs:
           for(const fn of ['saveNetworkSettings','testBridgeConnection','restartBridgeService','reconnectBridge','stopBridge','getBridgeUrl'])ok(bridge.includes(fn),`função: ${fn}`);
           for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
           ok(index.includes('http://192.168.1.70:8788'),'Bridge Raspberry 8788 configurada');
-          ok(index.includes('192.168.1.81'),'PS5 padrão configurado');
+          ok(index.includes('192.168.1.77'),'PS5 padrão 192.168.1.77 configurado');
           ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'controlador usa 8788');
           ok(!index.includes('http://192.168.1.70:8789'),'Bridge 8789 antiga removida do APK final');
           ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas do protocolo ocultas no SET');
