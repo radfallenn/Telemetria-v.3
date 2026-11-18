@@ -148,11 +148,11 @@ function writeJson(file, value) {
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let config = loadJson(CONFIG_FILE, {
-  ps5Ip: validIpv4(process.env.PS5_IP) ? process.env.PS5_IP : '192.168.1.81',
+  ps5Ip: validIpv4(process.env.PS5_IP) ? process.env.PS5_IP : '192.168.1.77',
   heartbeatIntervalMs: 1000,
   autoSession: true
 });
-if (!validIpv4(config.ps5Ip)) config.ps5Ip = '192.168.1.81';
+if (!validIpv4(config.ps5Ip) || config.ps5Ip === '192.168.1.81') config.ps5Ip = validIpv4(process.env.PS5_IP) ? process.env.PS5_IP : '192.168.1.77';
 config.heartbeatIntervalMs = clamp(Number(config.heartbeatIntervalMs) || 1000, 500, 5000);
 
 let database = loadJson(DB_FILE, { version: 4, sessions: [], ranking: [] });
