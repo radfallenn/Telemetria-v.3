@@ -16,7 +16,7 @@ mkdir -p data
 if [ ! -f config.json ]; then
   cat > config.json <<'JSON'
 {
-  "ps5Ip": "192.168.1.81",
+  "ps5Ip": "192.168.1.77",
   "heartbeatIntervalMs": 1000,
   "autoSession": true
 }
@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 5s
     environment:
-      PS5_IP: "192.168.1.81"
+      PS5_IP: "192.168.1.77"
       HTTP_PORT: "8788"
       UDP_LISTEN_PORT: "33740"
       PS5_HEARTBEAT_PORT: "33739"
@@ -82,7 +82,7 @@ fi
 
 echo "Bridge GT7 instalada e ativa."
 echo "HTTP: http://192.168.1.70:8788"
-echo "PS5: 192.168.1.81"
+echo "PS5: 192.168.1.77"
 echo "Heartbeat: A -> UDP 33739"
 echo "Recepção: mesmo socket UDP 33740"
 $DOCKER logs --tail 30 telemetria-v3-bridge || true
