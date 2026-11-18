@@ -3,28 +3,32 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const bridgeFile = path.join(root, 'www', 'bridge-v408.js');
 const indexFile = path.join(root, 'www', 'index.html');
-const from = '192.168.1.70:8789';
-const to = '192.168.1.70:8788';
+const target = 'http://192.168.1.70:8788';
+const oldUrls = ['192.168.1.70:8787', '192.168.1.70:8789', '192.168.1.81:8788'];
 
 let bridge = fs.readFileSync(bridgeFile, 'utf8');
 let html = fs.readFileSync(indexFile, 'utf8');
-bridge = bridge.replace(/192\\.168\\.1\\.70:\\d+/g, to);\nbridge = bridge.replace(/192\\.168\\.1\\.81:8788/g, to);
+for (const oldUrl of oldUrls) {
+  bridge = bridge.split(oldUrl).join('192.168.1.70:8788');
+  html = html.split(oldUrl).join('192.168.1.70:8788');
+}
 
-// Migrate addresses persisted by previous APK versions. Updating the default
-// alone is insufficient because Android WebView preserves localStorage.
 const oldGetter = "function getBridgeUrl(){return normalizeBridgeUrl(localStorage.getItem('gt7_bridge_url')||DEFAULT_BRIDGE)}";
-const newGetter = "function getBridgeUrl(){const saved=localStorage.getItem('gt7_bridge_url')||localStorage.getItem('gt7_bridge')||'';const stale=/^https?:\\/\\/192\\.168\\.1\\.(70:(8787|8789)|81:8788)\\/?$/i.test(saved);const value=stale||!saved?DEFAULT_BRIDGE:normalizeBridgeUrl(saved);localStorage.setItem('gt7_bridge_url',value);localStorage.setItem('gt7_bridge',value);return value}";
+const newGetter = "function getBridgeUrl(){const saved=localStorage.getItem('gt7_bridge_url')||localStorage.getItem('gt7_bridge')||'';const stale=!saved||saved.includes('192.168.1.70:8787')||saved.includes('192.168.1.70:8789')||saved.includes('192.168.1.81:8788');const value=stale?DEFAULT_BRIDGE:normalizeBridgeUrl(saved);localStorage.setItem('gt7_bridge_url',value);localStorage.setItem('gt7_bridge',value);return value}";
 if (bridge.includes(oldGetter)) bridge = bridge.replace(oldGetter, newGetter);
-else if (!bridge.includes("const stale=/^https?:")) throw new Error('Migração de endereço salvo não foi instalada no controlador');
+else if (!bridge.includes('const stale=!saved')) throw new Error('Migração de endereço salvo não foi instalada');
 
 const oldFill = "q('setBridgeUrl').value=localStorage.getItem('gt7_bridge_url')||D.bridgeUrl;";
-const newFill = "const saved=localStorage.getItem('gt7_bridge_url')||localStorage.getItem('gt7_bridge')||'';const stale=/^https?:\\/\\/192\\.168\\.1\\.(70:(8787|8789)|81:8788)\\/?$/i.test(saved);const bridgeValue=stale||!saved?D.bridgeUrl:saved;q('setBridgeUrl').value=bridgeValue;localStorage.setItem('gt7_bridge_url',bridgeValue);localStorage.setItem('gt7_bridge',bridgeValue);";
+const newFill = "const saved=localStorage.getItem('gt7_bridge_url')||localStorage.getItem('gt7_bridge')||'';const stale=!saved||saved.includes('192.168.1.70:8787')||saved.includes('192.168.1.70:8789')||saved.includes('192.168.1.81:8788');const bridgeValue=stale?D.bridgeUrl:saved;q('setBridgeUrl').value=bridgeValue;localStorage.setItem('gt7_bridge_url',bridgeValue);localStorage.setItem('gt7_bridge',bridgeValue);";
 if (html.includes(oldFill)) html = html.replace(oldFill, newFill);
+html = html.replace('id="setBridgeUrl" inputmode="url"', 'id="setBridgeUrl" inputmode="url" value="' + target + '"');
 
 fs.writeFileSync(bridgeFile, bridge);
 fs.writeFileSync(indexFile, html);
 if (!bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'")) throw new Error('Controlador não aponta para Bridge 8788');
-if (!bridge.includes('const stale=')) throw new Error('Migração de localStorage ausente');
-if (!html.includes('http://192.168.1.70:8788')) html = html.replace('</body>', '<!-- GT7_BRIDGE_URL=http://192.168.1.70:8788 -->\\n</body>');
-if (html.includes(from)) throw new Error('Referência à porta antiga 8789');
-console.log('OK: Bridge Raspberry 192.168.1.70:8788; PS5 192.168.1.81; endereços antigos migrados automaticamente.');
+if (!bridge.includes('const stale=!saved')) throw new Error('Migração de localStorage ausente');
+if (!html.includes(target)) throw new Error('SET não aponta para Bridge 8788');
+for (const oldUrl of oldUrls) {
+  if (bridge.includes(oldUrl) || html.includes(oldUrl)) throw new Error('Endereço antigo permaneceu: ' + oldUrl);
+}
+console.log('OK: app usa Bridge Raspberry 192.168.1.70:8788; PS5 192.168.1.81; URLs antigas migradas.');
