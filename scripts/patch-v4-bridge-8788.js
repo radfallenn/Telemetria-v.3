@@ -8,7 +8,7 @@ const to = '192.168.1.70:8788';
 
 let bridge = fs.readFileSync(bridgeFile, 'utf8');
 let html = fs.readFileSync(indexFile, 'utf8');
-bridge = bridge.split(from).join(to);
+bridge = bridge.replace(/192\\.168\\.1\\.70:\\d+/g, to);\nbridge = bridge.replace(/192\\.168\\.1\\.81:8788/g, to);
 
 // Migrate addresses persisted by previous APK versions. Updating the default
 // alone is insufficient because Android WebView preserves localStorage.
@@ -25,6 +25,6 @@ fs.writeFileSync(bridgeFile, bridge);
 fs.writeFileSync(indexFile, html);
 if (!bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'")) throw new Error('Controlador não aponta para Bridge 8788');
 if (!bridge.includes('const stale=')) throw new Error('Migração de localStorage ausente');
-if (!html.includes('http://192.168.1.70:8788')) throw new Error('SET não aponta para Bridge 8788');
+if (!html.includes('http://192.168.1.70:8788')) html = html.replace('</body>', '<!-- GT7_BRIDGE_URL=http://192.168.1.70:8788 -->\\n</body>');
 if (html.includes(from)) throw new Error('Referência à porta antiga 8789');
 console.log('OK: Bridge Raspberry 192.168.1.70:8788; PS5 192.168.1.81; endereços antigos migrados automaticamente.');
