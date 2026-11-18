@@ -102,7 +102,7 @@ jobs:
       - name: Install GT7 Bridge reader
         run: node scripts/install-bridge-from-v408-apk.js
 
-      - name: Connect app to new Bridge 8789
+      - name: Connect app to Raspberry Bridge 8788
         run: |
           node --check scripts/patch-v4-editable-network-settings.js
           node scripts/patch-v4-editable-network-settings.js
@@ -137,7 +137,7 @@ jobs:
           for(const id of ['setBridgeControl','setBridgeUrl','setPs5Ip','setPollInterval','setSaveReconnect','setTestBridge','setRestartBridge','setStopBridge','setBridgeStatus'])ok(index.includes(id),`SET: ${id}`);
           ok(index.includes('http://192.168.1.70:8788'),'Bridge Raspberry 8788 configurada');
           ok(index.includes('192.168.1.81'),'PS5 padrão configurado');
-          ok(index.includes('NOVA BRIDGE 8789'),'janela SET atualizada');
+          ok(index.includes('BRIDGE E PS5'),'janela SET atualizada');
           ok(bridge.includes("const DEFAULT_BRIDGE = 'http://192.168.1.70:8788'"),'controlador usa 8788');
           ok(!index.includes('http://192.168.1.70:8789'),'Bridge 8789 antiga removida do APK final');
           ok(!index.includes('setUdpPort')&&!index.includes('setHeartbeatPort'),'portas do protocolo ocultas no SET');
