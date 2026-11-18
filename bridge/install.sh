@@ -50,6 +50,17 @@ services:
       start_period: 5s
 YAML
 
+# Remove versões antigas que podem manter a UDP 33740 ocupada.
+for container in telemetria-bridge-8789 telemetria-bridge gt7-bridge gt7-telemetria-bridge telemetria-v3-bridge; do
+  $DOCKER rm -f "$container" >/dev/null 2>&1 || true
+done
+
+if command -v ss >/dev/null 2>&1 && ss -lun | grep -Eq '(^|[[:space:]])[^[:space:]]*:33740[[:space:]]'; then
+  echo "ERRO: UDP 33740 continua ocupada após remover containers antigos." >&2
+  echo "Identifique o processo com: sudo ss -lunp | grep 33740" >&2
+  exit 1
+fi
+
 $DOCKER compose -f compose.yml up -d --force-recreate --remove-orphans
 
 healthy=0
